@@ -111,8 +111,8 @@ I don't just want to know a function returns `Dict[str, Any]`. I want to know *w
 
 ## Where I ended up
 
-Spent most of the Saturday getting an AST parser working, wrote a basic scope resolver, then immediately got stuck on decorators that modify return types. By evening I had something that could type check `x = 1 + 2` and tell you `x` is an `int`. Revolutionary.
+After doing a little bit of research and reading, I spent most of the Saturday getting an AST parser working, wrote a basic scope resolver, then immediately got stuck on decorators that modify return types. By evening I had something that could type check `x = 1 + 2` and tell you `x` is an `int`. Revolutionary.
 
-MyPy has been in development since 2012. 100k+ lines of code. And I thought I'd build something useful in an afternoon because Langchain annoyed me.
+Then I read MyPy. MyPy has been in development since 2012. 100k+ lines of code. And I thought I'd build something useful in an afternoon because Langchain annoyed me.
 
 I did learn a lot about how type systems work though. And I still think there's something to the provenance idea?  Maybe when I have more than one Saturday.
