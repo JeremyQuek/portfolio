@@ -44,11 +44,21 @@ I found that this list supports an average of up to **41 million ops/s**, includ
 
 So the fast list outperforms `std::list` on every benchmark by a non-trivial factor.
 
-The randomized mixed operations test (first test) is probably the most realistic one. I discovered the slowdown there is likely due to a collapse in branch prediction support, simulating real hot path conditions. In a real order book, you'd have a mix of adds, cancels, and matches all interleaved, so this test is the one I care about most.
-
 One thing I found cool is that **fast list supports both random access and removal** while `std::list` doesn't even have that. In `std::list`, if you want to remove a specific order by ID, you need to walk the entire list O(n) to find it. In a real trading system, cancellations are the most common operation (some estimates say 90%+ of orders get cancelled), so this matters a lot.
 
-### The numbers
+### Did it live up to expectations?
+
+Honestly? Not entirely. When I first saw the isolated benchmarks (Add at 451M ops/s, Remove at 238M ops/s) I thought I'd cracked it. I was getting 7-11x speedups and feeling pretty good about myself.
+
+Then I ran the mixed operations benchmark and reality hit. 1.22x. That's it. That's the speedup when you interleave adds, removes, and consumes randomly, which is what actually happens in a real order book.
+
+I thought the contiguous memory layout would carry me through any access pattern, but it turns out that when you're jumping between different operation types unpredictably, branch prediction falls apart. The CPU can't anticipate what's coming next, and all those careful cache optimizations matter less when the branch predictor is thrashing.
+
+Working with C++ was also relatively new for me at this point. I spent an embarrassing amount of time debugging memory issues that would've been obvious to someone more experienced. At one point I had a use-after-free bug in the free list recycling logic that only showed up under heavy load. Took me a full evening to track down because I thought it was a logic error in the linking, not a lifetime issue.
+
+I also initially tried using `std::unordered_map` for the ID lookup before switching to the raw array approach. I thought the hash map would be "fast enough" since it's O(1) amortized. Turns out the hashing overhead and pointer indirection killed performance so badly that it was barely faster than `std::list`. Once I switched to the direct array index approach, that's when things really clicked.
+
+### Some results
 
 Hardware: Apple M2 Pro, Sonoma 14.6.1, 16GB Ram
 
@@ -72,7 +82,7 @@ Hardware: Apple M2 Pro, Sonoma 14.6.1, 16GB Ram
 | Consume              | 500000  | 1.79 ms   | 4 ns  |
 | Mixed                | 1000000 | 23.92 ms  | 24 ns |
 
-The 11.76x speedup on Remove is the one that made me grin. That's the operation that matters most in a real order book, and it's where the design choices really pay off.
+The 11.76x speedup on Remove is the one that made me grin. That's the operation that matters most in a real order book, and it's where the design choices really pay off. But again, that 1.22x on Mixed keeps me humble. Isolated benchmarks can be deceiving.
 
 ## How I designed the list
 
@@ -113,4 +123,6 @@ In theory it could also support adding to front O(1) and adding to random O(1). 
 
 Building this taught me that the gap between "theoretically O(1)" and "actually fast" is enormous. `std::list` is O(1) insertion/deletion too, but it's 7-11x slower in practice because of cache misses. The algorithmic complexity is the same, but the constant factor is dominated by memory access patterns.
 
-It also gave me a new appreciation for what HFT firms are doing. My little experiment hits 41M mixed ops/s on a laptop. Real production order books at firms like Citadel or Jump Trading are doing this at even lower latencies on custom hardware with kernel bypass networking. The rabbit hole goes deep.
+It also humbled me. I went in thinking "just make it contiguous and it'll be fast" and came out realizing that real world performance is way more nuanced than that. Branch prediction, memory access patterns under mixed workloads, even the order you check conditions in your if statements, it all matters.
+
+It also gave me a new appreciation for what HFT firms are doing. My little experiment hits 41M mixed ops/s on a laptop. Real production order books at firms are doing this at even lower latencies on custom hardware with kernel bypass networking. If they're getting 1000x better mixed performance than me, I can only imagine how deep the optimizations go. The rabbit hole is endless.
