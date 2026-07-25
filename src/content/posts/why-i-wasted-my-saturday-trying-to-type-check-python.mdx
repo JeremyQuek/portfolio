@@ -13,6 +13,7 @@ description: "I got annoyed at not knowing what Python functions return, so I tr
 import astImg from '../../assets/images/blogs/ast.png';
 import compilerImg from '../../assets/images/blogs/compiler.jpg';
 import dataFlowImg from '../../assets/images/blogs/data_flow_analysis.png';
+import symbolTable from '../../assets/images/blogs/symbol_table.png';
 
 ## Table of contents
 
@@ -46,6 +47,9 @@ The english language can be represented as a grammar tree!
 Like diagramming a sentence. "The cat sat on the mat" becomes a tree with "sat" as root, "cat" as subject, "mat" as location. Same thing but for code. 
 Did you know that all programming languages are grammar composed languages? Look it up! It's called context free grammar (add a link to a internet page abt cfg and italicize CFG)
 
+---
+
+### What else do we need
 But the tree only tells you about *syntax*. The AST knows you're calling a function but not what it *returns*. That's a whole other layer: program semantics.
 
 <img src={compilerImg.src} alt="Compiler pipeline" width="700" />
@@ -62,8 +66,7 @@ Okay he's just throwing words around now 😂
 
 So what are these things?
 
-**Data flow** is tracking where values come from and where they end up. Variable `x` gets assigned here, passed into this function, returned from that one. You're tracing the life of a value through your program. **Control flow** is tracking which paths your code can take. Every if/else, loop, early return creates a branch. Your program isn't one straight line, it's a graph of possible paths.
-
+**Data flow** is tracking where values come from and where they end up. Variable `x` gets assigned here, passed into this function, returned from that one. **Control flow** is tracking which paths your code can take. Every if/else, loop, early return creates a branch. 
 *Lets visualise why we might need a graph*
 
 <img src={dataFlowImg.src} alt="Data flow analysis" width="700" />
@@ -83,6 +86,20 @@ Then we need to analyze the program, and model its execution flow -> this is our
 And finally we do data flow analys -> we use that graph to propagate relationships and mutations of symbols coherently throughout the program.
 
 > Of couse, modern type checkers are wayyyy more complex than this, but this is the foundation layer 
+
+
+
+### How Do We Actually Retain Type Information? 
+
+What actual data structure do we use to store the types as we move through a program?
+
+Think about it - we need to persist a key-value pair of symbol-to-type. What does this point to naturally?
+A hash table! Or more accurately a **stack** of hash tables. 
+
+<img src={symbolTableImg.src} alt="Data flow analysis" width="700" />
+
+Why a stack? As we move through functions for instance, there could be two `x` active at once, a local `x`
+and a global `x`. This means that its not enough to have one table, we need a hierachy of tables that mimic a lexical environmetn
 
 ---
 
