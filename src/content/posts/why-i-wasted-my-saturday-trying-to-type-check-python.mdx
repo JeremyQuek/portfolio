@@ -45,7 +45,7 @@ You have the destination "mat"
 The english language can be represented as a grammar tree!
 
 Like diagramming a sentence. "The cat sat on the mat" becomes a tree with "sat" as root, "cat" as subject, "mat" as location. Same thing but for code. 
-Did you know that all programming languages are grammar composed languages? Look it up! It's called context free grammar (add a link to a internet page abt cfg and italicize CFG)
+Did you know that all programming languages are grammar composed languages? Look it up! It's called [*Context Free Grammar*](https://en.wikipedia.org/wiki/Context-free_grammar)
 
 ---
 
@@ -66,27 +66,17 @@ Okay he's just throwing words around now 😂
 
 So what are these things?
 
-**Data flow** is tracking where values come from and where they end up. Variable `x` gets assigned here, passed into this function, returned from that one. **Control flow** is tracking which paths your code can take. Every if/else, loop, early return creates a branch. 
+I kept seeing these terms around and got annoyed of not knowing them, but turns out their crazy intuitive!
+
 *Lets visualise why we might need a graph*
 
 <img src={dataFlowImg.src} alt="Data flow analysis" width="700" />
 
 
-As we saw, depending on the branch that executes, `y` has either value 2 or 3. And this applies too if y is `int` in one branch and `str` in another branch.
+As we saw, depending on the branch that executes, `y` has either value 2 or 3. 
 We also need to *remember* what the type was before and after the branch, this is where we need to *flow* the data through the graph like we're actually running the program!
 
 Woah, so do most compilers and type systems maintain some sort of internal graph? Yes they do! It's what is primary used for optimizations and typing statically
-
-### Quick Recap
-
-So what do we need to to actually type check a program? 
-
-First we need to understand WHAT the language is -> that's where our AST comes in. Representating a language with a tree. <br/>
-Then we need to analyze the program, and model its execution flow -> this is our control flow graph of *all path* a program can take. <br/>
-And finally we do data flow analys -> we use that graph to propagate relationships and mutations of symbols coherently throughout the program.
-
-> Of couse, modern type checkers are wayyyy more complex than this, but this is the foundation layer 
-
 
 
 ### How Do We Actually Retain Type Information? 
