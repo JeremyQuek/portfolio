@@ -16,19 +16,58 @@ description: "Inspired by HFT order books, I built a super fast list in C++ that
 
 ## What this is about
 
-If you've ever looked into how stock exchanges actually work under the hood, you'll find this thing called an order book. It's basically a giant list of buy and sell orders waiting to be matched. Every time someone wants to buy 100 shares of AAPL at $150, that order sits in the book until someone else is willing to sell at that price.
+If you've ever looked into how stock exchanges actually work under the hood, you'll find this thing called an order book. 
+It's basically a giant list of buy and sell orders waiting to be matched. Every time someone wants to buy 100 shares of AAPL at $150, 
+that order sits in the book until someone else is willing to sell at that price.
 
-Now here's where it gets interesting. High frequency trading firms care about this structure *a lot*. We're talking about firms that spend millions on shaving microseconds off their execution time. They co-locate servers next to exchanges, use custom network cards, even care about the length of their fiber optic cables. And at the core of all that infrastructure? The order book. It needs to support insanely fast insertions (new orders flooding in), removals (cancellations, which happen way more often than you'd think), and lookups (matching engines finding the best price).
+Because order bidding has to occur at an extremely competitive rate, order books often deploy absurd mechanics to push programs and hardware to their limits
+I always found that fascinating, so I wanted to see if I could build something inspired by those principles
 
-The data structures these firms use are optimized down to the cache line level. I always found that fascinating, so I wanted to see if I could build something inspired by those principles
+--- 
 
 ## What I built
 
-I wanted to create a basic version of a container in C++ that supports super fast operations for adding and removal, borrowing the concepts used in real HFT order books. The goal was simple: make a list that's as fast as physically possible on modern hardware.
+I wanted to create a basic version of a container in C++ that supports super fast operations for adding and removal,
+ borrowing the concepts used in real HFT order books. The goal was simple: make a list that's as fast as physically possible on modern hardware.
 
-What I ended up with is a memory contiguous doubly linked list. Sounds contradictory right? Linked lists are supposed to be scattered all over memory. But that's exactly the trick. I preallocate a fat contiguous buffer and manage the linking within it. You get the O(1) insertion/deletion semantics of a linked list with the cache performance of an array.
 
-I found that this list supports an average of up to **41 million ops/s**, including FIFO ops + random access/removal.
+What I ended up with is a memory contiguous doubly linked list. Sounds contradictory right? 
+Linked lists are supposed to be scattered all over memory. 
+But we can solve that by preallocating fat contiguous buffer and restrict the linking to it.
+You get the O(1) insertion/deletion semantics of a linked list with the cache performance of an array.
+Of course this means I'm paying memory up front for performance
+
+---
+
+## How I designed the list
+
+Well, the list was performing relatively fast with random inserts, however I read that there are ways to push this even further
+I made the list structs 16 bytes each, which turned out to be super cache friendly. I used an array map with indices as IDs to prevent hash overhead:
+
+- The *i*th index of the array = *i*th memory slot
+
+<div align="center">
+  Illustration of Fast List
+  <img width="900" height="793" alt="Fast List illustration" src="https://github.com/user-attachments/assets/0a8b964b-66bd-4616-b247-66bd4eb6de08" />
+</div>
+<br/>
+
+**What it supports:**
+- Add to back O(1)
+- Remove from front & back O(1)
+- Access and remove at random O(1)
+
+In theory it could also support adding to front O(1) and adding to random O(1). I didn't implement those because for an order book you almost always just append to the back (new orders go to the end of the price level queue).
+
+In addition I also added the following optimizations:
+
+1) **Memory alignment.** I used aligned alloc to ensure the buffer is 64 byte aligned, perfect for cache fetch. Without this, your buffer might straddle cache line boundaries and you'd waste fetches.
+
+2) **Prefaulted pages.** Pages are prefaulted upon allocation. I found this ensures even faster access time since we can leverage TLB. Without prefaulting, the first access to each page triggers a page fault, which is expensive.
+
+3) **Free list.** I dynamically append removed nodes to a free vector, allowing memory reuse while keeping FIFO order intact. When a node gets removed, its slot goes back into the free pool. Next insertion grabs from the free pool first before extending into fresh memory.
+
+---
 
 ## How did it perform?
 
@@ -46,6 +85,8 @@ So the fast list outperforms `std::list` on every benchmark by a non-trivial fac
 
 One thing I found cool is that **fast list supports both random access and removal** while `std::list` doesn't even have that. In `std::list`, if you want to remove a specific order by ID, you need to walk the entire list O(n) to find it. In a real trading system, cancellations are the most common operation (some estimates say 90%+ of orders get cancelled), so this matters a lot.
 
+---
+
 ### Did it live up to expectations?
 
 Honestly? Not entirely. When I first saw the isolated benchmarks (Add at 451M ops/s, Remove at 238M ops/s) I thought I'd cracked it. I was getting 7-11x speedups and feeling pretty good about myself.
@@ -57,6 +98,8 @@ I thought the contiguous memory layout would carry me through any access pattern
 Working with C++ was also relatively new for me at this point. I spent an embarrassing amount of time debugging memory issues that would've been obvious to someone more experienced. At one point I had a use-after-free bug in the free list recycling logic that only showed up under heavy load. Took me a full evening to track down because I thought it was a logic error in the linking, not a lifetime issue.
 
 I also initially tried using `std::unordered_map` for the ID lookup before switching to the raw array approach. I thought the hash map would be "fast enough" since it's O(1) amortized. Turns out the hashing overhead and pointer indirection killed performance so badly that it was barely faster than `std::list`. Once I switched to the direct array index approach, that's when things really clicked.
+
+---
 
 ### Some results
 
@@ -84,40 +127,8 @@ Hardware: Apple M2 Pro, Sonoma 14.6.1, 16GB Ram
 
 The 11.76x speedup on Remove is the one that made me grin. That's the operation that matters most in a real order book, and it's where the design choices really pay off. But again, that 1.22x on Mixed keeps me humble. Isolated benchmarks can be deceiving.
 
-## How I designed the list
+---
 
-I made the list structs 16 bytes each, which turned out to be super cache friendly. I used an array map with indices as IDs to prevent hash overhead:
-
-- The *i*th index of the array = *i*th memory slot
-
-<div align="center">
-  Illustration of Fast List
-  <img width="900" height="793" alt="Fast List illustration" src="https://github.com/user-attachments/assets/0a8b964b-66bd-4616-b247-66bd4eb6de08" />
-</div>
-<br/>
-
-**What it supports:**
-- Add to back O(1)
-- Remove from front & back O(1)
-- Access and remove at random O(1)
-
-In theory it could also support adding to front O(1) and adding to random O(1). I didn't implement those because for an order book you almost always just append to the back (new orders go to the end of the price level queue).
-
-## Key optimizations I used
-
-1) **Memory contiguity.** I preallocated enough buffer for up to 1 million nodes contiguously, leveraging cache locality in CPU access. This is the big one. Modern CPUs are insanely fast at sequential memory access but terrible at pointer chasing. A regular `std::list` allocates each node separately on the heap, scattering them all over memory. My approach keeps everything together.
-
-2) **Cache friendliness.** I designed the list node structs to be 16 bytes, so each cache line (64 bytes) fetches 4 structs at once. This means when you're iterating through the list, you're almost never waiting on memory.
-
-3) **Memory alignment.** I used aligned alloc to ensure the buffer is 64 byte aligned, perfect for cache fetch. Without this, your buffer might straddle cache line boundaries and you'd waste fetches.
-
-4) **Prefaulted pages.** Pages are prefaulted upon allocation. I found this ensures even faster access time since we can leverage TLB. Without prefaulting, the first access to each page triggers a page fault, which is expensive.
-
-5) **Doubly linked list.** Allows O(1) insertion and delete from both ends. The "doubly" part is key because it lets you remove a node without needing to find its predecessor first.
-
-6) **Node ID array.** Uses an array of booleans where each index points to an *i*th slot using only pointer math, no hashing needed. This is how we get O(1) random access. Given an order ID, you just index directly into the array. No hash function, no collision handling, no overhead.
-
-7) **Free list.** I dynamically append removed nodes to a free vector, allowing memory reuse while keeping FIFO order intact. When a node gets removed, its slot goes back into the free pool. Next insertion grabs from the free pool first before extending into fresh memory.
 
 ## What I took away from this
 
