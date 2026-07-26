@@ -3,35 +3,37 @@ title: "About"
 description: "A bit about me and this blog."
 ---
 
-AstroPaper is a minimal, accessible and SEO-friendly blog theme built with [Astro](https://astro.build/) and [Tailwind CSS](https://tailwindcss.com/).
+## Hey
 
-![Astro Paper](@/assets/images/astropaper-og.jpg)
+I'm Jeremy. I'm a CS student doing a dual degree between UC Berkeley and NTU Singapore (Renaissance Engineering Programme). I like building things that are fast, understanding how systems work under the hood, and occasionally going down rabbit holes that eat my entire weekend.
 
-AstroPaper provides a solid foundation for blogs, or even portfolios\_ with full markdown support, built-in dark mode, and a clean layout that works out-of-the-box.
+At Berkeley I took Operating Systems, Compilers, Internet Architectures, and Advanced Algorithms. At NTU I'm doing a combined Bachelor's in CS and Master's in Technology Management. 4.6 CGPA if that matters to you.
 
-The blog posts in this theme also serve as guides, docs or example articles\_ making AstroPaper a flexible starting point for your next content-driven site.
+## What I've been doing
 
-## Features
+Most recently I interned at **Stripe** (Summer 2026) where I built an agentic tool that monitors operational mailing lists and triages them into weekly Slack alerts for on-run engineers. Ended up designing a multi-service distributed system across Java, Python, and Ruby with gRPC, Kafka/SQS ingestion, Temporal cron workers, and observability with Logscale. Saved the team 20+ hours/month of manual triage work.
 
-AstroPaper comes with a set of useful features that make content publishing easy and effective:
+Before that I was at **Vertex Ventures** (Temasek) building production features on their investment platform. Did a lot of search infrastructure work — implemented full + fuzzy text search with multithreaded Postgres I/Os (40% faster), reengineered a data ingestion pipeline with async HTTP/2 (10x speedup). Django and React stack.
 
-- SEO-friendly
-- Fast performance
-- Light & dark mode
-- Highly customizable
-- Organizable blog posts
-- Responsive & accessible
-- Static search with [PageFind](https://pagefind.app/)
-- Automatic social image generation
+And before that, **LTA** where I built an LLM benchmarking service on AWS (Fargate, Lambda, S3, the whole nine yards).
 
-and so much more.
+## Projects
 
-## Show your support
+- **[Fast List](/posts/fast-list-experiment)** — A C++ container inspired by HFT order books. 41 million ops/s.
+- **[Project Gecko](/posts/project-gecko-v1)** — A type inference and provenance tool for Python. Compiler brain stuff.
+- **[Park It!](/posts/park-it-app)** — Full stack parking app for Singapore drivers. React, Flask, Redis, Postgres.
+- **[JsonIconv](/posts/jsoniconv-efficient-ipc-tool-proposal)** — My favourite non-proprietary tool from Stripe.
+- **NASH** — A shell from scratch in C++. Fork/exec, piping, I/O redirection, the works.
 
-If you like [AstroPaper](https://github.com/satnaing/astro-paper), consider giving it a star ⭐️.
+## Hackathons
 
-Found a bug 🐛 or have an improvement ✨ in mind? Feel free to open an [issue](https://github.com/satnaing/astro-paper/issues), submit a [pull request](https://github.com/satnaing/astro-paper/pulls) or start a [discussion](https://github.com/satnaing/astro-paper/discussions).
+Won 1st at BCG x Vechain (50+ teams) building a Web3 recycling d-App, and 3rd at ITDSS x LTA (100+ teams) with an AI vision system for walkway safety.
 
-If you find this theme helpful, you can also [sponsor me on GitHub](https://github.com/sponsors/satnaing) or [buy me a coffee](https://buymeacoffee.com/satnaing) to show your support — every penny counts.
+## Tech I use
 
-Kyay zuu! 🙏🏼
+Python, Java, C/C++, TypeScript, SQL | AWS, GCP, Docker, Kubernetes, Redis, Postgres | React, Spring Boot, Django, Flask
+
+## Links
+
+- [GitHub](https://github.com/JeremyQuek)
+- [LinkedIn](https://www.linkedin.com/in/jeremy-quek-996a5a323/)

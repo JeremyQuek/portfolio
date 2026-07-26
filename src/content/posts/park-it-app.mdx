@@ -1,0 +1,65 @@
+---
+author: Jeremy Quek
+pubDatetime: 2026-03-10T00:00:00Z
+title: "Park It! — Because Google Maps doesn't know Singapore parking"
+slug: park-it-app
+featured: true
+draft: false
+tags:
+  - react
+  - python
+  - fullstack
+description: "Built a parking app for stressed new drivers in Singapore because Google Maps doesn't show live lot data."
+---
+
+## Table of contents
+
+## What's this about
+
+If you've ever driven in Singapore, you know the pain. Google Maps will happily route you to a mall but won't tell you if there's actually parking available, what it costs, or whether there's EV charging. As a new driver I found this incredibly stressful, so I built something to fix it.
+
+Repo: [github.com/JeremyQuek/Park-It-app](https://github.com/JeremyQuek/Park-It-app)
+
+Live: [park-it-maps.vercel.app](https://park-it-maps.vercel.app/)
+
+---
+
+## What it does
+
+It's a web app that shows you live parking data across Singapore: available lots, lot types, EV charging spots, locations, and prices. All sourced from LTA and HDB open data endpoints, updated every minute.
+
+<div align="center">
+<img width="300" alt="Park It search" src="https://github.com/user-attachments/assets/07e665f4-0f3a-44ac-afdd-e7e6d7f7d3d1" />
+<img width="303" alt="Park It results" src="https://github.com/user-attachments/assets/c6ac7e71-9087-4312-a6c2-85b6ed3f5dc6" />
+</div>
+
+<div align="center">
+<img width="300" alt="Park It details" src="https://github.com/user-attachments/assets/7f0cda63-d297-4fa6-89c4-126f2c436230" />
+<img width="300" alt="Park It pricing" src="https://github.com/user-attachments/assets/44f8d5f9-090b-40f4-ac51-32e0632eaf69" />
+</div>
+
+---
+
+## How it works
+
+React frontend, Python Flask backend, Supabase Postgres for persistence. A cron job hits the LTA/HDB APIs every minute and caches the data. I also threw in a Groq LLM integration to parse the unstructured pricing formats (they're a mess across different carparks).
+
+<div align="center">
+<img width="600" alt="Park It architecture" src="https://github.com/user-attachments/assets/afe8aaaf-9757-4c94-9069-c02a1d06deb6" />
+</div>
+
+---
+
+## Services
+
+1. **Frontend (Vercel)** — React app with global edge delivery
+2. **Backend (Render)** — Flask server handling carpark logic
+3. **Database (Supabase)** — Postgres for bookmarks and carpark data
+4. **LLM (GroqCloud)** — Dynamically parses unstructured price formats
+5. **Cron (Cron-Job.org)** — Triggers `/update` every minute to refresh data
+
+---
+
+## What I'd do differently
+
+Honestly the DB was overkill for this. The number of carpark lots in Singapore is bounded, so the whole thing could live in memory with Redis alongside the backend. Would be way faster for lookups. The Postgres setup was from initial project requirements but if I rebuilt it today, Redis + in-memory tree is the move.
