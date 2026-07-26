@@ -2,7 +2,7 @@
 author: Jeremy Quek
 pubDatetime: 2026-07-24T00:00:00Z
 title: "How I wasted my Saturday trying to Type Check Python"
-slug: gecko-type-checker-python
+slug: type-checker-python
 featured: true
 draft: false
 tags:
@@ -27,11 +27,11 @@ So one Saturday I sat down and thought, how hard could it be? Very.
 
 ## How does type checking even work?
 
-Type checkers analyze your program without running it. To do that, you first need something called an Abstract Syntax Tree (AST), a tree where each node is an expression of value
+Type checkers analyze your program without running it. To do that, I first needed something called an Abstract Syntax Tree (AST), a tree where each node is an expression of value.
 
 <img src={astImg.src} alt="Abstract Syntax Tree" width="700" />
 
-Okay, if you're like me, I had no clude what I was looking at when I saw it for the first time.
+Okay, if you're like me, I had no clue what I was looking at when I saw it for the first time.
 But, one analogy which helped was thinking of a AST an a representation of grammatical structure. Say you have an sentence: "The cat sat on the mat".
 
 You have the sentence
@@ -47,15 +47,17 @@ The english language can be represented as a grammar tree!
 Like diagramming a sentence. "The cat sat on the mat" becomes a tree with "sat" as root, "cat" as subject, "mat" as location. Same thing but for code. 
 Did you know that all programming languages are grammar composed languages? Look it up! It's called [*Context Free Grammar*](https://en.wikipedia.org/wiki/Context-free_grammar)
 
+With that, I learned that Python has a built-in AST module, which I could use. This honestly made the problem even tractable because otherwise
+I would have to build a regex tokenizer and parser, which even with Flex and BSON would near impossible.
 ---
 
 ### What else do we need
-But the tree only tells you about *syntax*. The AST knows you're calling a function but not what it *returns*. That's a whole other layer: program semantics.
+But the tree only tells me about *syntax* - The AST knows I'm calling a function but not what it *returns*. That's a whole other layer: program semantics.
 
 <img src={compilerImg.src} alt="Compiler pipeline" width="700" />
 
 
-Modern compiler techinques go through many many layers of representation. Hold up, why are we trying to build a compiler?
+Modern compiler techinques go through many many layers of representation. Hold up, why are am I trying to build a compiler?
 Because surprisingly, many of the requirements of modelling a language statically are also compiler programs! The next section will definitively tie in
 
 ---
@@ -76,14 +78,15 @@ I kept seeing these terms around and got annoyed of not knowing them, but turns 
 As we saw, depending on the branch that executes, `y` has either value 2 or 3. 
 We also need to *remember* what the type was before and after the branch, this is where we need to *flow* the data through the graph like we're actually running the program!
 
-Woah, so do most compilers and type systems maintain some sort of internal graph? Yes they do! It's what is primary used for optimizations and typing statically
+Woah, so do most compilers and type systems maintain some sort of internal graph? Yes they do! It's what is primary used for optimizations and typing statically. 
+However, I thought that I could do away with the CFG for now and simply recurse on the AST. Well we'll see how well that goes...
 
 
 ### How Do We Actually Retain Type Information? 
 
-What actual data structure do we use to store the types as we move through a program?
+The next step is: When traversing the AST/graph, what actual data structure should I use to store the type information?
 
-Think about it - we need to persist a key-value pair of symbol-to-type. What does this point to naturally?
+Think about it - I needed to persist a key-value pair of symbol-to-type. What does this point to naturally?
 A hash table! Or more accurately a **stack** of hash tables. 
 
 <img src={symbolTableImg.src} alt="Data flow analysis" width="700" />
@@ -95,7 +98,7 @@ and a global `x`. This means that its not enough to have one table, we need a hi
 
 ## What do modern type checkers do?
 
-I looked up [Sorbet](https://sorbet.org/), a Ruby type checker built at Stripe. They took a language arguably more dynamic than Python and got meaningful type checking out of it.
+After banging out a basic typing script for simple Python code, I looked up [Sorbet](https://sorbet.org/), a Ruby type checker built at Stripe. They took a language arguably more dynamic than Python and got meaningful type checking out of it.
 
 Then TypeScript. Its type system is Turing-complete. You can write programs in the types themselves. Genius or cursed? Not sure, but it works!
 
