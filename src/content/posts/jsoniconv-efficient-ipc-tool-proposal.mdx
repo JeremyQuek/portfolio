@@ -34,7 +34,7 @@ So JsonIconv's approach to IPC is: take your data, serialize it to JSON, then se
 
 Now here's the thing. JSON is a text format. It's human readable. It's also incredibly wasteful for machine-to-machine communication. An integer like `1000000` takes 7 bytes as a string. As a 32-bit int? 4 bytes. As a varint? Maybe 3.
 
-But wait, it gets better. JsonIconv doesn't just send JSON. It wraps the JSON in *more* encoding layers. Headers, metadata, framing bytes. So now instead of sending bytes, we can send MORE bytes! And encode them with MORE bytes!
+The effect of using JsonIconv isn't just that your message gets padded with more brace bytes, its that it wraps in UTF-8 encoding layers. Headers, metadata, framing bytes. So instead of just sending bytes, we added more brace/bracket bytes. And encode them with more bytes.
 
 The architecture looks something like this:
 
@@ -79,7 +79,7 @@ Instead of using json and pipes which are far too inefficient, I thought we shou
 
 A potential IPC technique could have the sender process spins up a virtual screen device and *renders* the bytes as pixels on screen. The recipient process would then spin up an OCR model and *infers* the bytes from the image.
 
-This approach would ensure high accuracy and low latency, given that OCR models today are sufficiently advancing. The benefit of spinning up a virtual screen means that we could use screenshots as paper trails and maybe autonomate screnshotting the device with Hammerspoon, and export the data to CDC.
+This approach would be a high risk, no rewared approach in low accuracy and high latency, esp given that OCR models today are basically *always* determinstic. The benefit of spinning up a virtual screen means that we could use screenshots as paper trails and maybe autonomate screnshotting the device with Hammerspoon, and export the data to CDC.
 
 Overall, I think this would be a much cleaner architecture than JSON.
 ---
