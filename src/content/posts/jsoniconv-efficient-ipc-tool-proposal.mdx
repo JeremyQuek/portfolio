@@ -22,21 +22,24 @@ import laughImg from '../../assets/images/blogs/laugh.png';
 
 ## What is IPC?
 
-Inter-process communication. Two programs need to talk to each other. Classic problem. There are a million ways to do it: shared memory, Unix sockets, pipes, message queues, gRPC, REST, carrier pigeons.
+Inter-process communication is the means by which two processes talk to each other, typically on the same machine. 
+There are a many ways to do it: shared memory, Unix sockets, pipes, message queues, gRPC, REST, carrier pigeons
 
 The key question is always: how do I serialize the data so both sides understand it?
+
+### Where Iconv comes in 
+
+Iconv is a program used to convert between different character encodings. This is useful if one application receives say
+ISO-8583 encoding and the other expects UTF-8 encoding
+
 
 ---
 
 ## Enter JsonIconv
 
-So JsonIconv's approach to IPC is: take your data, serialize it to JSON, then send it across the wire.
+Hmm...okay so it seems that somebody thought that it would be good idea to implement Iconv tool in Java with JSON as the intermediate serialisation.
 
-Now here's the thing. JSON is a text format. It's human readable. It's also incredibly wasteful for machine-to-machine communication. An integer like `1000000` takes 7 bytes as a string. As a 32-bit int? 4 bytes. As a varint? Maybe 3.
-
-The effect of using JsonIconv isn't just that your message gets padded with more brace bytes, its that it wraps in UTF-8 encoding layers. Headers, metadata, framing bytes. So instead of just sending bytes, we added more brace/bracket bytes. And encode them with more bytes.
-
-The architecture looks something like this:
+JSON is a text format. It's human readable. But it's also incredibly wasteful for machine-to-machine communication. An integer like `1000000` takes 7 bytes as a string. As a 32-bit int? 4 bytes. As a varint? Maybe 3.
 
 ```
 Your data (small)
@@ -57,7 +60,8 @@ Send over the wire
 Reverse all of the above on the other side
 ```
 
-Beautiful. Efficient. Definitely not adding latency to every single service call.
+Safe to say, this tool gets a pretty notorious reputation for obvious reasons...
+
 
 ---
 
@@ -75,7 +79,7 @@ Well... I think its fair to say its either a joke tool or something someone spun
 
 ## How I would make it better
 
-Instead of using json and pipes which are far too inefficient, I thought we should go with a more analog approach.
+Instead of using json and pipes which are far too efficient, I thought we should go with a more intuitive approach
 
 A potential IPC technique could have the sender process spins up a virtual screen device and *renders* the bytes as pixels on screen. The recipient process would then spin up an OCR model and *infers* the bytes from the image.
 
