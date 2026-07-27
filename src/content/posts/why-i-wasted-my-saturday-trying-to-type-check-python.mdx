@@ -15,12 +15,16 @@ import astImg from '../../assets/images/blogs/ast.png';
 import compilerImg from '../../assets/images/blogs/compiler.jpg';
 import dataFlowImg from '../../assets/images/blogs/data_flow_analysis.png';
 import symbolTableImg from '../../assets/images/blogs/symbol_table.jpg';
+import exampleAstImg from '../../assets/images/blogs/example_ast.jpg';
+
 
 ## Table of contents
 
 ## What's this about
 
-Ever worked on a library like Langchain and wanted to know what `base_ai_model.invoke()` actually returns? Or wonder what pydantic monster Django was giving you back? Well I did, and I don't have the answer to that lol. But this is the exact conundrum that kept me wondering if there could be a proper type checker for Python...
+Ever worked on a library like Langchain and wanted to know what `base_ai_model.invoke()` actually returns? Or wonder what 
+pydantic monster Django was giving you back? Well I did, and I don't have the answer to that lol. 
+But this is the exact conundrum that kept me wondering if there could be a proper type checker for Python...
 
 So one Saturday I sat down and thought, how hard could it be? Very.
 
@@ -28,9 +32,13 @@ So one Saturday I sat down and thought, how hard could it be? Very.
 
 ## How does type checking even work?
 
-Type checkers analyze your program without running it. To do that, I first needed something called an Abstract Syntax Tree (AST), a tree where each node is an expression of value.
+Type checkers analyze your program without running it. To do that, we need to first represent Python as structured data.
+There is where an Abstract Syntax Tree (AST) comes in. ASTs are tree representations of programming languages.
 
 <img src={astImg.src} alt="Abstract Syntax Tree" width="700" />
+<div align="center">Example of an AST</div>
+
+### A Simple Analogy
 
 Okay, if you're like me, I had no clue what I was looking at when I saw it for the first time.
 But, one analogy which helped was thinking of a AST an a representation of grammatical structure. Say you have an sentence: "The cat sat on the mat".
@@ -48,28 +56,55 @@ The english language can be represented as a grammar tree!
 Like diagramming a sentence. "The cat sat on the mat" becomes a tree with "sat" as root, "cat" as subject, "mat" as location. Same thing but for code. 
 Did you know that all programming languages are grammar composed languages? Look it up! It's called [*Context Free Grammar*](https://en.wikipedia.org/wiki/Context-free_grammar)
 
-With that, I learned that Python has a built-in AST module, which I could use. This made the problem more tractable because otherwise
-I would have to build a lexer and parser, which even with Flex and Bison would be near impossible.
+### How do we create and use ASTs
+
+Typically ASTs are created using lexers (DFA/NFA) to tokenize the program file, and then parser to turn it into a tree (recursive or stack based). 
+
+An AST is incredibly useful because it gives us a structured representation.
+
+<div align="center">A simple exercise</div>
+```
+for i in range(x):
+  x = 1+2
+```
+
+Lets try turning the above snipper into an AST!
+We see a for loop, so we know that we need a for node.
+
+Then we have the body expression, which is a assignment statement.
+On the left we have the target symbol x, and on the right the expression, which has two ints and an operator
+
+A basic AST would be:
+<img src={examplAstImg.src} alt="Abstract Syntax Tree" width="700" />
+
+
+### What I did
+
+Thankfully, because Python has a built in ast module, I used that to generate my trees.
+These made my life easier so I could focus on downstream processing of the code
+
 ---
 
 ### What else do we need
-But the tree only tells me about *syntax* - The AST knows I'm calling a function but not what it *returns*. That's a whole other layer: program semantics.
+The tree only tells us about *program structure*.
+
+The real analysis begins with semantics. This is where we define types, return values, operations.
 
 <img src={compilerImg.src} alt="Compiler pipeline" width="700" />
 
 
-Modern compiler techinques go through many many layers of representation. Hold up, why are am I trying to build a compiler?
+Uptil, the process I was going looked similar to compilation a program Hold up, why are am I trying to build a compiler?
 Because surprisingly, many of the requirements of modelling a language statically are also compiler programs! The next section will definitively tie in
 
 ---
 
-## Tying it in: Data flow analysis and control flow graphs
+## Data flow analysis and control flow graphs
 
-Okay he's just throwing words around now 😂
+So what are these things? I kept seeing these terms around and got annoyed of not knowing them, but turns out their really intuitive!
 
-So what are these things?
 
-I kept seeing these terms around and got annoyed of not knowing them, but turns out their crazy intuitive!
+After we create a program tree, we might want to take tree and use it create a *control flow graph*. While an AST tells us what the program is,
+the control flow graph tells us how the program runs.
 
 *Lets visualise why we might need a graph*
 
@@ -78,22 +113,36 @@ I kept seeing these terms around and got annoyed of not knowing them, but turns 
 
 As we saw, depending on the branch that executes, `y` has either value 2 or 3. 
 We also need to *remember* what the type was before and after the branch, this is where we need to *flow* the data through the graph like we're actually running the program!
+This is what helps us answer the question, what is the type of symbol x at this part of the program!
 
+### Cool fact
 Woah, so do most compilers and type systems maintain some sort of internal graph? Yes they do! It's what is primary used for optimizations and typing statically. 
 However, I thought that I could do away with the CFG for now and simply recurse on the AST. Well we'll see how well that goes...
 
 
-### How Do We Actually Retain Type Information? 
+### What I did
 
-The next step is: When traversing the AST/graph, what actual data structure should I use to store the type information?
+While a graph was ideal, and I eventually did sit down to properly design one, on my first iteration I decided to skip it
+and just recurse on the AST; I wrote a script that basically walks down the tree from `ast` module, and memorises the type for each symbol at each node.
+
+--- 
+
+## What Do We To Store Type Information? 
+
+When traversing the graph, what actual data structure should I use to store the type information?
 
 Think about it - I needed to persist a key-value pair of symbol-to-type. What does this point to naturally?
 A hash table! Or more accurately a **stack** of hash tables. 
 
 <img src={symbolTableImg.src} alt="Data flow analysis" width="700" />
 
-Why a stack? As we move through functions for instance, there could be two `x` active at once, a local `x`
-and a global `x`. This means that its not enough to have one table, we need a hierachy of tables that mimic a lexical environmetn
+As we move through functions for instance, there could be two `x` active at once, a local `x`
+and a global `x`. This means that its not enough to have one table, we need a hierachy of tables that mimic a lexical environment!
+
+
+### What I did
+
+As I was traversing down my AST, I maintain a stack of tables, which I pushed and pop each time I entered and exited a frame or changed scope (e.g entering a class body)
 
 ---
 
