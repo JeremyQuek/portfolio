@@ -30,7 +30,7 @@ The key question is always: how do I serialize the data so both sides understand
 ### Where Iconv comes in 
 
 Iconv is a program used to convert between different character encodings. This is useful if one application receives say
-ISO-8583 encoding and the other expects UTF-8 encoding
+ISO-8859-1 encoding and the other expects UTF-8 encoding
 
 
 ---
@@ -39,7 +39,9 @@ ISO-8583 encoding and the other expects UTF-8 encoding
 
 Hmm...okay so it seems that somebody thought that it would be good idea to implement Iconv tool in Java with JSON as the intermediate serialisation.
 
-JSON is a text format. It's human readable. But it's also incredibly wasteful for machine-to-machine communication. An integer like `1000000` takes 7 bytes as a string. As a 32-bit int? 4 bytes. As a varint? Maybe 3.
+JSON is a text format. It's human readable. But it's also rather wasteful serialisation where they are leaner options available.
+An integer like `1000000` takes 7 bytes as a string. As a 32-bit int? 4 bytes. As a varint? Maybe 3.
+A systems person would probably feel the mild discomfort here.
 
 ```
 Your data (small)
@@ -60,21 +62,19 @@ Send over the wire
 Reverse all of the above on the other side
 ```
 
-Safe to say, this tool gets a pretty notorious reputation for obvious reasons...
-
+Safe to say, this tool gets a notorious reputation for obvious reasons...
 
 ---
 
 ## Why does this exist?
 
-To be honest, I don't know lol.
+To be honest, I don't know.
 
 One of the staff engineers, who I worked under, mentioned that his sole purpose in rejoining Stripe was so that he could personally see to tearing down this tool 
 
 <img src={laughImg.src} alt="laughing" width="700" />
 
-Well... I think its fair to say its either a joke tool or something someone spun up because they were willing to throw memory at a problem for debuggability...
-
+Well regardless, I think fair to say that if I was the one fed up inspecting byte streams all day long, JsonIconv wouldn't look so absurd
 ---
 
 ## How I would make it better
