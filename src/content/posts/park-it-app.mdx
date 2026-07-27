@@ -11,6 +11,9 @@ tags:
   - fullstack
 description: "Built a parking app for stressed new drivers in Singapore because Google Maps doesn't show live lot data."
 ---
+import parkit1Img from '../../assets/images/blogs/parkit1.png';
+import parkit2Img from '../../assets/images/blogs/parkit2.png';
+import parkitArchImg from '../../assets/images/blogs/parkitarchitecture.png';
 
 ## Table of contents
 
@@ -28,15 +31,8 @@ Live: [park-it-maps.vercel.app](https://park-it-maps.vercel.app/)
 
 It's a web app that shows you live parking data across Singapore: available lots, lot types, EV charging spots, locations, and prices. All sourced from LTA and HDB open data endpoints, updated every minute.
 
-<div align="center">
-<img width="300" alt="Park It search" src="https://github.com/user-attachments/assets/07e665f4-0f3a-44ac-afdd-e7e6d7f7d3d1" referrerpolicy="no-referrer" />
-<img width="303" alt="Park It results" src="https://github.com/user-attachments/assets/c6ac7e71-9087-4312-a6c2-85b6ed3f5dc6" referrerpolicy="no-referrer" />
-</div>
-
-<div align="center">
-<img width="300" alt="Park It details" src="https://github.com/user-attachments/assets/7f0cda63-d297-4fa6-89c4-126f2c436230" referrerpolicy="no-referrer" />
-<img width="300" alt="Park It pricing" src="https://github.com/user-attachments/assets/44f8d5f9-090b-40f4-ac51-32e0632eaf69" referrerpolicy="no-referrer" />
-</div>
+<img src={parkit1Img.src} alt="Park It search" width="700" />
+<img src={parkit2Img.src} alt="Park It results" width="700" />
 
 ---
 
@@ -44,9 +40,7 @@ It's a web app that shows you live parking data across Singapore: available lots
 
 React frontend, Python Flask backend, Supabase Postgres for persistence. A cron job hits the LTA/HDB APIs every minute and caches the data. I also threw in a Groq LLM integration to parse the unstructured pricing formats (they're a mess across different carparks).
 
-<div align="center">
-<img width="600" alt="Park It architecture" src="https://github.com/user-attachments/assets/afe8aaaf-9757-4c94-9069-c02a1d06deb6" referrerpolicy="no-referrer" />
-</div>
+<img src={parkitArchImg.src} alt="Park It architecture" width="700" />
 
 ---
 

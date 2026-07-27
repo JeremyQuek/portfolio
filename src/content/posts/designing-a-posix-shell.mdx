@@ -45,11 +45,11 @@ What are file descriptors? They're just integers. They point towards the process
 
 <img src={fdImg.src} alt="File descriptor table" width="700" /> 
 
-When the parent shell forks a child process, the child inherits the parent's descriptors. The parent then executes a `wait()` on the child, while the child's output is redirected to the parent's TTY.
+When the parent shell forks a child process, the child inherits the parent's descriptors. The parent then executes a `wait()` on the child, while the child's output is redirected to the parent's PTY.
 
 This is why when you run a compiled C exectuable, or a program like `brew` in your terminal, the output from that process initiated from the shell gets sent to the same terminal device as the shell.
 
-This is the foundation for everything else in the shell. Once I understood that fds are just integers pointing at stuff, and that children inherit them from parents, the rest started clicking.
+This is the foundation for everything else in the shell. 
 
 ---
 
@@ -160,17 +160,20 @@ I built a simple tokenizer that splits on spaces, then walks through looking for
 
 ---
 
-## Connecting to a TTY
+## Connecting to a PTY
 
 So what's a TTY? It stands for "teletypewriter", a relic from when terminals were literally physical typewriters connected to computers over serial lines. These days a TTY is just the kernel abstraction that handles your terminal I/O: it buffers input, handles line editing, processes special characters like Ctrl+C, and connects your shell's stdin/stdout to the screen.
 
+<div align="center">Example of a Terminal</div>
 <img src={ttyImg.src} alt="TTY diagram" width="700" />
 
-When I open Terminal.app, the system creates a TTY device and hooks my shell up to it. The shell reads from the TTY (my keyboard input) and writes to the TTY (text on screen). Simple.
+When I open Terminal.app, the system creates a PTY and hooks my shell up to it. The shell reads from the my keyboard input and writes to the text on screen.
 
-But I decided to do something different. Instead of a regular terminal, I piped the shell's stdout into an Electron application (sounds absurd but I just wanted something *cool*). That's what gave the shell that matrix-y look in the screenshot at the top of this blog!
+### Using Electron to simulate a PTY 
 
-Building a terminal wasn't really part of the project though, so I mostly vibe-coded the frontend portions and only did the wiring myself.  I wrote a bash script that launches the Electron app, the Electron app then forks my shell process and connects to it via a pseudo-TTY, spinning in a loop reading its output and rendering it into the custom UI.
+Instead of properly wiring up a PTY, I piped the shell's stdout into an Electron application (sounds absurd but I just wanted something *cool*). That's what gave the shell that matrix-y look in the screenshot at the top of this blog!
+
+Building a terminal wasn't really part of the project though, so I mostly vibe-coded the frontend portions and only did the wiring myself.  I wrote a bash script that launches the Electron app, the Electron app then forks my shell process and connects to it via fd sharing, spinning in a loop reading its output and rendering it into the custom UI.
 
 ---
 

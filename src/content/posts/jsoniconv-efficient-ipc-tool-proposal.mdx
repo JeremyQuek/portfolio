@@ -84,7 +84,7 @@ So instead of using json and pipes which is far too efficient, I thought we shou
 
 A potential IPC technique could have the sender process spins up a virtual screen device and *renders* the bytes as pixels on screen. The recipient process would then spin up an OCR model and *infers* the bytes from the image.
 
-This approach would be a high risk, no reward approach in low accuracy and high latency, esp given that OCR models are not determinstic. The benefit of spinning up a virtual screen means that we could use screenshots as paper trails and maybe autonomate screnshotting the device with Hammerspoon, and export the data to CDC.
+This approach would be a high risk, no reward strategy in low accuracy and high latency, esp given that OCR models are not determinstic. The benefit of spinning up a virtual screen means that we could use screenshots as paper trails and maybe autonomate screnshotting the device with Hammerspoon, and export the data to CDC.
 
 Overall, I think this would be a much cleaner architecture than JSON.
 ---
