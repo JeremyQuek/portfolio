@@ -74,12 +74,13 @@ One of the staff engineers, who I worked under, mentioned that his sole purpose 
 
 <img src={laughImg.src} alt="laughing" width="700" />
 
-Well regardless, I think fair to say that if I was the one fed up inspecting byte streams all day long, JsonIconv wouldn't look so absurd
+Regardless, I think fair to say that if I was the one fed up inspecting byte streams all day long, JsonIconv wouldn't look so absurd
+
 ---
 
 ## How I would make it better
 
-Instead of using json and pipes which are far too efficient, I thought we should go with a more intuitive approach
+So instead of using json and pipes which is far too efficient, I thought we should go with a more intuitive approach
 
 A potential IPC technique could have the sender process spins up a virtual screen device and *renders* the bytes as pixels on screen. The recipient process would then spin up an OCR model and *infers* the bytes from the image.
 
