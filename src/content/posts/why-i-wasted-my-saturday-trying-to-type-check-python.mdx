@@ -64,15 +64,17 @@ An AST is incredibly useful because it gives us a structured representation.
 
 <div align="center">A simple exercise</div>
 ```
+# Basic Python Code
 for i in range(x):
   x = 1+2
+
 ```
 
 Lets try turning the above snipper into an AST!
-We see a for loop, so we know that we need a for node.
 
-Then we have the body expression, which is a assignment statement.
-On the left we have the target symbol x, and on the right the expression, which has two ints and an operator
+- We see a for loop, so we know that we need a for node.
+- Then we have the body expression, which is a assignment statement.
+- On the left we have the target symbol x, and on the right the expression, which has two ints and an operator
 
 A basic AST would be:
 <img src={exampleAstImg.src} alt="Abstract Syntax Tree" width="700" />
