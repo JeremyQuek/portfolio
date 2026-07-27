@@ -164,8 +164,8 @@ I built a simple tokenizer that splits on spaces, then walks through looking for
 
 So what's a TTY? It stands for "teletypewriter", a relic from when terminals were literally physical typewriters connected to computers over serial lines. These days a TTY is just the kernel abstraction that handles your terminal I/O: it buffers input, handles line editing, processes special characters like Ctrl+C, and connects your shell's stdin/stdout to the screen.
 
-<div align="center">Example of a Terminal</div>
 <img src={ttyImg.src} alt="TTY diagram" width="700" />
+<div align="center">Example of Whats Terminal Can do</div>
 
 When I open Terminal.app, the system creates a PTY and hooks my shell up to it. The shell reads from the my keyboard input and writes to the text on screen.
 

@@ -31,8 +31,19 @@ Live: [park-it-maps.vercel.app](https://park-it-maps.vercel.app/)
 
 It's a web app that shows you live parking data across Singapore: available lots, lot types, EV charging spots, locations, and prices. All sourced from LTA and HDB open data endpoints, updated every minute.
 
-<img src={parkit1Img.src} alt="Park It search" width="700" />
-<img src={parkit2Img.src} alt="Park It results" width="700" />
+<div style="display: flex; justifyContent: center; gap: 20px;">
+<img width="380" height="856" alt="Screenshot 2026-03-10 at 10 22 32 PM" src="https://kommodo.ai/i/qZULzdtepgzT2zuIbzfc" />
+<img width="380" height="856" alt="Screenshot 2026-03-10 at 10 23 02 PM" src="https://kommodo.ai/i/XxikWVb3ALuEQrJNkN3h" />
+</div>
+<div align="center">Main Application Maps Page</div>
+
+
+### The Intended flow
+
+The image on the right shows the home page of the application. It brings users to a google style like maps created using Mapbox
+
+When users input a destination, the app calculates the route and plots a route, but it also brings up a list of 10 of the nearest carparks.
+This comes with information such as price and lot availability where its available
 
 ---
 
@@ -40,7 +51,7 @@ It's a web app that shows you live parking data across Singapore: available lots
 
 React frontend, Python Flask backend, Supabase Postgres for persistence. A cron job hits the LTA/HDB APIs every minute and caches the data. I also threw in a Groq LLM integration to parse the unstructured pricing formats (they're a mess across different carparks).
 
-<img src={parkitArchImg.src} alt="Park It architecture" width="700" />
+<img width="700" alt="Screenshot 2026-03-10 at 10 23 02 PM" src="https://kommodo.ai/i/vBukaXgndTZtV6myrhzm" />
 
 ---
 
