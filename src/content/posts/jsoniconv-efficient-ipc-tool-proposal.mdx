@@ -11,4 +11,88 @@ tags:
 description: "Perhaps my favourite non-proprietary tool I used during my time at Stripe."
 ---
 
-Coming soon.
+## Table of contents
+
+## What's this about
+
+During my time at Stripe, I encountered this internal IPC tool called JsonIconv. And I was genuinely baffled by how inefficient it was.
+
+---
+
+## What is IPC?
+
+Inter-process communication. Two programs need to talk to each other. Classic problem. There are a million ways to do it: shared memory, Unix sockets, pipes, message queues, gRPC, REST, carrier pigeons.
+
+The key question is always: how do I serialize the data so both sides understand it?
+
+---
+
+## Enter JsonIconv
+
+So JsonIconv's approach to IPC is: take your data, serialize it to JSON, then send it across the wire.
+
+Now here's the thing. JSON is a text format. It's human readable. It's also incredibly wasteful for machine-to-machine communication. An integer like `1000000` takes 7 bytes as a string. As a 32-bit int? 4 bytes. As a varint? Maybe 3.
+
+But wait, it gets better. JsonIconv doesn't just send JSON. It wraps the JSON in *more* encoding layers. Headers, metadata, framing bytes. So now instead of sending bytes, we can send MORE bytes! And encode them with MORE bytes!
+
+The architecture looks something like this:
+
+```
+Your data (small)
+    │
+    ▼
+Serialize to JSON (bigger)
+    │
+    ▼
+Add framing headers (even bigger)
+    │
+    ▼
+Encode the whole thing as UTF-8 bytes (somehow bigger still)
+    │
+    ▼
+Send over the wire
+    │
+    ▼
+Reverse all of the above on the other side
+```
+
+Beautiful. Efficient. Definitely not adding latency to every single service call.
+
+---
+
+## Why does this exist?
+
+Okay to be fair, there are real reasons. JSON is debuggable. I can pipe it to `jq` and actually read what's going on. Try doing that with protobuf. Human readability matters when you're triaging production incidents at 3am.
+
+It also means any language can speak it. No code generation, no schema compilation step, no version mismatches between producer and consumer. Just... text.
+
+And at Stripe's scale, the overhead of JSON serialization is often dwarfed by network latency anyway. If the round trip takes 50ms, shaving 0.1ms off serialization isn't exactly moving the needle.
+
+---
+
+## But still
+
+I couldn't help but think about how much CPU time across the fleet is spent just... encoding and decoding JSON. Thousands of services, millions of requests per second, each one serializing structs to text and then parsing that text back into structs on the other end.
+
+Every `json.Marshal()` is doing string concatenation, escape character handling, reflection over struct fields. Every `json.Unmarshal()` is doing tokenization, type coercion, memory allocation for every single field.
+
+For context, protobuf serialization is roughly 5-10x faster than JSON and produces messages 3-5x smaller. That's not nothing when multiplied across an entire infrastructure.
+
+---
+
+## How I would make it better
+
+Instead of using json and pipes which are far too inefficient, I thought we should go with a more analog approach.
+
+A potential IPC technique could have the sender process spins up a virtual screen device and *renders* the bytes as pixels on screen. The recipient process would then spin up an OCR model and *infers* the bytes from the image.
+
+This approach would ensure high accuracy and low latency, given that OCR models today are sufficiently advancing. The benefit of spinning up a virtual screen means that we could use screenshots as paper trails and maybe autonomate screnshotting the device with Hammerspoon, and export the data to CDC.
+
+Overall, I think this would be a much cleaner architecture than JSON.
+---
+
+## What I took away
+
+Sometimes the "inefficient" choice is the right one because it optimizes for the thing that actually matters: developer velocity and debuggability. But it's still worth understanding *why* it's inefficient, and knowing when the tradeoff stops making sense.
+
+Also, never underestimate how much engineering effort goes into making JSON fast. The `simdjson` people are doing heroic work parsing JSON at gigabytes per second using SIMD instructions. If we're stuck with JSON, at least we can make it go brrrr.
