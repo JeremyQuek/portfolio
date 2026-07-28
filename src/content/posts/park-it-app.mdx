@@ -1,6 +1,6 @@
 ---
 author: Jeremy Quek
-pubDatetime: 2025-09-10T00:00:00Z
+pubDatetime: 2024-09-10T00:00:00Z
 title: "Park It! 🚗, An App for New Drivers"
 slug: park-it-app
 featured: false
@@ -25,7 +25,10 @@ Live: [park-it-maps.vercel.app](https://park-it-maps.vercel.app/)
 
 ## What it does
 
-It's a web app that shows you live parking data across Singapore: available lots, lot types, EV charging spots, locations, and prices. All sourced from LTA and HDB open data endpoints, updated every minute.
+> Edit: As of 2025, the Render backend does not reliably work since the stay-alive self ping on free tier gets blocked
+
+Park It is meant to help drivers navigate to their destination while also offering a list of parking options near their destination. I pull the data from different sources, and have it updated
+every minute; LTA and HDB public datasets. 
 
 <div style="display: flex; justifyContent: center; gap: 20px;">
 <img width="380" height="856" alt="Screenshot 2026-03-10 at 10 22 32 PM" src="https://plain-apac-prod-public.komododecks.com/202607/27/qZULzdtepgzT2zuIbzfc/image.png" />
@@ -36,16 +39,18 @@ It's a web app that shows you live parking data across Singapore: available lots
 
 ### The Intended flow
 
-The image on the right shows the home page of the application. It brings users to a google style like maps created using Mapbox
+I designed the main application interface to a maps, using Mapbox API. This is intuitive and visual way to showcase parking locations.
 
 When users input a destination, the app calculates the route and plots a route, but it also brings up a list of 10 of the nearest carparks.
-This comes with information such as price and lot availability where its available
+This comes with information such as price and lot availability where its available!
+
+Since the app does not natively support en-route navigation, I added a link to export the current coordinate pair to google maps, and open up the navigation process there.
 
 ---
 
 ## How it works
 
-React frontend, Python Flask backend, Supabase Postgres for persistence. A cron job hits the LTA/HDB APIs every minute and caches the data. I also threw in a Groq LLM integration to parse the unstructured pricing formats (they're a mess across different carparks).
+The architecture is a React frontend, Python Flask backend and Supabase Postgres for persistence. A cron job hits the LTA/HDB APIs every minute and caches the data. I also threw in a Groq LLM integration to parse the unstructured pricing formats (they're a mess across different carparks).
 
 <img width="700" alt="Screenshot 2026-03-10 at 10 23 02 PM" src="https://plain-apac-prod-public.komododecks.com/202607/27/vBukaXgndTZtV6myrhzm/image.png" />
 <div align="center">Software Architecture</div>
