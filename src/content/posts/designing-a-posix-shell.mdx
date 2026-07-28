@@ -204,9 +204,28 @@ I had to support arbitrary chains (`A | B | C | D`), which means n-1 pipes for n
 
 If you're a dev, you would definintely have hit Ctrl+C on your shell before. This is known as a [signal](https://en.wikipedia.org/wiki/Signal_(IPC)).
 
-When you press Ctrl+C, your terminal sends SIGINT to the foreground process group. Problem: if your shell is in the foreground group, Ctrl+C kills the shell too.
+### What are Signals
+Signals are a process control mechanism implemented at the kernel level. Each time before your scheduled process is run, the kernel does a quick check on the `pending_signals` 
+mailbox and switches execution based on the type of signal received. This is done via bitwise math and direct Instruction pointer manipulation so its very fast!
 
-The fix is process groups. I put each child process in its own group using `setpgid()`, and use `tcsetpgrp()` to make the child's group the foreground while it's running. When the child finishes, I give the foreground back to the shell.
+This is the reason why you can Ctrl+C a hanged shell process and it 'responds'!
+
+
+### Process groups
+
+Say you spin up something like a pipe chain:
+
+```
+cat file | grep "x" | wc -l
+```
+
+If you Ctrl+C this shell, which process are you talking to? You should be targeting all of them right?
+
+Or if your run a process, which itself creates other child process, the Ctrl+C signal should not just reach the shell's child but all its grandchildren as well (Or your would have orphans)! 
+
+Or what if your shell is in the foreground group, Ctrl+C kills the shell too!
+
+The fix is have separate process groups. I put each child process in its own group using `setpgid()`, and use `tcsetpgrp()` to make the child's group the foreground while it's running. When the child finishes, I give the foreground back to the shell.
 
 This way Ctrl+C only kills the running program.
 
@@ -218,22 +237,24 @@ Adding `&` at the end runs a command in the background. The shell just doesn't c
 
 But here's the thing nobody warns you about: zombie processes. When a background process finishes, it doesn't fully disappear. It sits there as a zombie until the parent calls `wait()`. If you never reap them, they accumulate.
 
-I added a non-blocking `waitpid` check with `WNOHANG` before each prompt to clean these up. Felt hacky, but that's genuinely how real shells handle it.
+I added a non-blocking `waitpid` check with `WNOHANG` before each prompt to clean these up. Felt hacky, but thats generally how some shells handle it.
 
 ---
 
 ## Parsing: the part nobody talks about
 
-Most people know fork and exec exist. But fewer think about how a shell turns this:
+Finally while I implemented each individual mechanims, I also need to handle chained commands like this: 
 
 ```
 cat input.txt | grep foo > out.txt &
 ```
 
-into something executable. I need to figure out:
+Turning this into something executable need tokenizing and parsing, almost like a mini language! I need to figure out:
 - There are two commands separated by `|`
 - The second command redirects stdout to `out.txt`
 - The whole thing runs in the background
+
+> Real shells have [shell language interpreters](https://en.wikipedia.org/wiki/Unix_shell#Scripting), implementing full ASTs! 
 
 I built a simple tokenizer that splits on spaces, then walks through looking for special characters (`|`, `<`, `>`, `&`). Each command becomes a struct with its argv, input source, output destination, and whether it's backgrounded.
 Although in theory shells should support a full shell language file, that would be too complex for now...
