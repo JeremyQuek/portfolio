@@ -190,9 +190,9 @@ I always thought `|` was some magical shell syntax. It actually creates a [pipe]
 
 The `pipe()` syscall gives two fds: a read end and a write end. I use `dup2()` to wire process A's stdout into the write end, and process B's stdin into the read end.
 
-### Memory leaks
+### File Descriptor leaks
 
-If I forget to close *any* unused pipe fd in *any* process, it leads to silent memory leaks, so its important to be explicit in manual FD manipulation here.
+If I forget to close *any* unused pipe fd in *any* process, it leads to silent fd leaks, so its important to be explicit in manual FD manipulation here.
 
 If the reader still has an open write-end fd, it'll wait forever for data that'll never come. If the writer still has an open read-end fd, it doesn't know nobody's reading anymore.
 
