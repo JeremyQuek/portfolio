@@ -22,7 +22,7 @@ import pipeImg from '../../assets/images/blogs/pipe.webp';
 
 So shells are a subject that really fascinated me for a long time. In one of the courses I took at Berkeley, I learned a great deal about POSIX APIs, file descriptors, IPC and the other basic building blocks of designing a shell. I decided to put together some of the stuff I learned and try writing a shell program!
 
-<img src={shellImg.src} alt="My shell running inside a PTTY" width="700" />
+<img src={shellImg.src} alt="My shell running inside a PTTY" width="700" height = "300"/>
 
 Repo: [github.com/JeremyQuek/NASH](https://github.com/JeremyQuek/NASH)
 
@@ -185,6 +185,7 @@ I expected redirection to require changing every program I executed. Turns out i
 I always thought `|` was some magical shell syntax. It actually creates a [pipe](https://en.wikipedia.org/wiki/Pipeline_(Unix)) between two separate processes. A pipe is just a kernel buffer with two file descriptors attached to it.
 
 <img src={pipeImg.src} alt="Pipe diagram" width="700" />
+<div align="center">A Unix Pipe Under The Hood</div>
 
 The `pipe()` syscall gives two fds: a read end and a write end. I use `dup2()` to wire process A's stdout into the write end, and process B's stdin into the read end.
 
