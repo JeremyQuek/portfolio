@@ -55,7 +55,24 @@ This is the foundation for everything else in the shell.
 
 ## The first surprise: cd isn't a program
 
-One thing that surprised me early on was that `cd` isn't actually an executable sitting somewhere in `/usr/bin`. I spent a while wondering why, until it clicked: changing directories affects the *current* process. If my shell forked a child to run `cd`, only the child would move into the new directory before immediately exiting. My shell would still be sitting in the original location. That's why `cd` has to be a builtin, calling `chdir()` directly in the shell process itself.
+One thing that surprised me early on was that `cd` isn't actually an executable sitting somewhere in `/usr/bin`. 
+There are numer of such shell commands which are builtins - commands implemented directly within the shell.
+
+If you're on zsh/bash, you can run `which $cmd` to see the executable binding of that command in your shell!
+Doing it for pwd/cd will likely show:
+
+```
+
+user(laptop) ~/ % which pwd
+pwd: shell built-in command
+user(laptop) ~/ % which cd
+pwd: shell built-in command
+
+```
+
+Changing directories affects the *current* process. 
+If my shell forked a child to run `cd`, only the child would move into the new directory before immediately exiting. 
+My shell would still be sitting in the original location. That's why `cd` has to be a builtin, calling `chdir()` directly in the shell process itself.
 
 `pwd` is similar. Just calls `getcwd()` and prints it. But having to think about *why* these are builtins rather than programs was the first moment where process isolation became real to me.
 
@@ -63,25 +80,82 @@ One thing that surprised me early on was that `cd` isn't actually an executable 
 
 ## fork() returns twice
 
-The first time I called `fork()`, it felt almost magical. The function returns *twice*. Once in the parent, once in the child. Suddenly there are two copies of my shell running. The only difference is the return value.
+`fork()` is a pretty basic Unix convention. It allows you to create a process thats a clone of the parent.
 
-In the parent, `fork()` returns the child's PID. In the child, it returns 0. That's how I know which one I am. Then the child calls `execv()` to replace itself with whatever program you actually wanted to run, and the parent calls `wait()` to block until it's done.
+> There's an interesting piece of [history](https://www.microsoft.com/en-us/research/publication/a-fork-in-the-road/) as to why `fork()` is designed this way instead of starting up a fresh "empty process"
 
-Conceptually simple. But I spent way too long debugging why arguments weren't being passed correctly. `execv` wants a null-terminated array of strings, and I kept forgetting the null terminator. Classic off-by-one energy.
+The interesting thing about `fork()` is that because the child proc is clone, at the instance `fork()` completes both parent and child are executing on the
+same line of code!
 
+```c
+
+pid_t pid = fork();
+
+if (pid == 0) {
+    // child process
+    execv("/bin/ls", args);
+} else {
+    // parent process
+    waitpid(pid, &status, 0);
+}
+
+```
+
+The interesting thing is that for the parent `fork()` returns the child pid, while the child pid returns 0. 
+You can imagine that `fork()` internally changes the return value of the child on the stack!
+ 
+From here, the child typically calls `execv()` to replace itself with whatever program you actually wanted to run, and the parent calls `wait()` to block until it's done.
+
+This is the foundation of Unix process creation and there are other interesting nuances like [Copy-on-write](https://en.wikipedia.org/wiki/Copy-on-write)!
 ---
 
-## Path resolution: why I had to type /usr/bin/wc
+## Path resolution
 
-Initially I had to type full paths like `/usr/bin/wc` to run anything. So annoying. The fix is PATH resolution: I grab the `PATH` environment variable, split it by `:`, and for each directory check if the program exists there. First match wins.
+So actually run child executables, the shell has to be able to find them.
+Most shell softwares like zsh come with preconfiguerd paths and good heuristic lookup hierachies to find something like `grep`/ `ls`
 
-I couldn't use `execvp` (assignment rules said no), so I implemented my own resolution with `execv`. Honestly this was good because now I actually *understand* what PATH does rather than just knowing it exists. It's literally just a list of directories to search through. That's it. No magic.
+This is highly OS and fs dependent, so instead of creating my own path hierachy, I just borrowed the $PATH variable from the
+parent shell that runs my shell.
+
+You can run `echo $PATH` on your zsh/bash shell and it will show the paths that ure shell looks up when you type a commnad like `ls`!
+
+Shell's also supporting caching paths for quick lookup, you can run `hash` on your shell and see the internal hash table
+
+```
+$ hash
+hits	command
+   12	/usr/bin/ls
+    5	/usr/bin/cat
+    3	/usr/bin/git
+    8	/usr/bin/python3
+    2	/usr/bin/vim
+    6	/usr/bin/ssh
+    1	/usr/bin/make
+    4	/usr/bin/docker
+    7	/bin/grep
+    9	/bin/sed
+```
+
+I also implemented a hash table that would cache commands to their paths when executed once before so that the shell doesnt have to search again.
+As a bonus I also configured it so that on launch, my shell inherits the parent's hash table and shell $PATH!
 
 ---
 
 ## Everything is file descriptors
 
-This was the realization that tied everything together. Before this project, redirection, pipes, and stdout all felt like separate concepts. They're not. They're all the same thing: file descriptors.
+Now I can find and run child processes, but I couldn't see their output yet.
+
+Most of shell's output and input manipulation is fd redirection. As mentioned fds are just integer indexes into ure process file table, which itself is also just a pointer table.
+
+
+### Stdin and Stdout
+
+Stdin, stoud is what process typicall write/read to using `printf()/print()` and `input()/cin` (and other canonical language methods).
+When you run a python script, or executable or a git command, their outputs are written to stdout which is terminal you executed them from.
+
+> Did you know that in C, `printf()` is also an internally buffered user space library around the system call write() to stdout?
+
+FDs can also be manually changed using `dup()`, `dup2()` from the [`<unistd.h>`](https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/unistd.h.html) library!
 
 ```
 echo hello           → stdout (fd 1) → terminal
@@ -89,7 +163,7 @@ echo hello > out.txt → stdout (fd 1) → file
 echo hello | wc      → stdout (fd 1) → pipe
 ```
 
-Nothing inside `echo` changes in any of these cases. It always just writes to fd 1. The shell changes *what fd 1 points to* before calling exec. That's redirection. That's pipes. That's everything.
+Nothing inside `echo` changes in any of these cases. It always just writes to fd 1. The shell changes *what fd 1 points to* before calling exec. 
 
 I expected redirection to require changing every program I executed. Turns out it requires changing none of them. I just replace file descriptor 1 with a file using `dup2()`, call `exec()`, and the program happily writes into the file without realizing anything changed.
 
@@ -97,7 +171,7 @@ I expected redirection to require changing every program I executed. Turns out i
 
 ## Pipes: the part that broke me
 
-I always thought `|` was some magical shell syntax. It isn't. A pipe is literally just a tiny kernel buffer with two file descriptors attached to it.
+I always thought `|` was some magical shell syntax. It actually creates a pipe between two separate processes. A pipe is just a kernel buffer with two file descriptors attached to it.
 
 ```
 grep foo
@@ -113,11 +187,11 @@ grep foo
    stdin
 ```
 
-The `pipe()` syscall gives two fds: a read end and a write end. I use `dup2()` to wire process A's stdout into the write end, and process B's stdin into the read end. Done.
+The `pipe()` syscall gives two fds: a read end and a write end. I use `dup2()` to wire process A's stdout into the write end, and process B's stdin into the read end.
 
-Except not done at all. Because if I forget to close *any* unused pipe fd in *any* process, everything hangs. No error. No crash. Just silence.
+If I forget to close *any* unused pipe fd in *any* process, it leads to silent memory leaks, so its important to be explicit in manual FD manipulation here.
 
-Why? If the reader still has an open write-end fd, it'll wait forever for data that'll never come. If the writer still has an open read-end fd, it doesn't know nobody's reading anymore.
+If the reader still has an open write-end fd, it'll wait forever for data that'll never come. If the writer still has an open read-end fd, it doesn't know nobody's reading anymore.
 
 I had to support arbitrary chains (`A | B | C | D`), which means n-1 pipes for n processes. Getting the fd cleanup right across all of them took me a full evening. The hanging bugs were the worst because there's literally no feedback. Your shell just... stops.
 
@@ -129,7 +203,7 @@ When you press Ctrl+C, your terminal sends SIGINT to the foreground process grou
 
 The fix is process groups. I put each child process in its own group using `setpgid()`, and use `tcsetpgrp()` to make the child's group the foreground while it's running. When the child finishes, I give the foreground back to the shell.
 
-This way Ctrl+C only kills the running program. Same deal with Ctrl+Z for pausing.
+This way Ctrl+C only kills the running program.
 
 ---
 
@@ -157,21 +231,22 @@ into something executable. I need to figure out:
 - The whole thing runs in the background
 
 I built a simple tokenizer that splits on spaces, then walks through looking for special characters (`|`, `<`, `>`, `&`). Each command becomes a struct with its argv, input source, output destination, and whether it's backgrounded.
+Although in theory shells should support a full shell language file, that would be too complex for now...
 
 ---
 
 ## Connecting to a PTY
 
-So what's a TTY? It stands for "teletypewriter", a relic from when terminals were literally physical typewriters connected to computers over serial lines. These days a TTY is just the kernel abstraction that handles your terminal I/O: it buffers input, handles line editing, processes special characters like Ctrl+C, and connects your shell's stdin/stdout to the screen.
+So the final part of this project was creating my own PTY. I could use the standard terminal, but wheres the fun in that!
+I wanted something that looked cooler
 
 <img src={ttyImg.src} alt="TTY diagram" width="700" />
-<div align="center">Example of Whats Terminal Can do</div>
+<div align="center">Example of Whats Cool Terminals Look Like</div>
 
-When I open Terminal.app, the system creates a PTY and hooks my shell up to it. The shell reads from the my keyboard input and writes to the text on screen.
 
 ### Using Electron to simulate a PTY 
 
-Instead of properly wiring up a PTY, I piped the shell's stdout into an Electron application (sounds absurd but I just wanted something *cool*). That's what gave the shell that matrix-y look in the screenshot at the top of this blog!
+Instead of properly wiring up a PTY, I piped the shell's stdout into an Electron application (sounds absurd but I just wanted something that looks *fancy*). That's what gave the shell that matrix-y look in the screenshot at the top of this blog!
 
 Building a terminal wasn't really part of the project though, so I mostly vibe-coded the frontend portions and only did the wiring myself.  I wrote a bash script that launches the Electron app, the Electron app then forks my shell process and connects to it via fd sharing, spinning in a loop reading its output and rendering it into the custom UI.
 
