@@ -206,9 +206,9 @@ If you're a dev, you would definintely have hit Ctrl+C on your shell before. Thi
 
 ### What are Signals
 Signals are a process control mechanism implemented at the kernel level. Each time before your scheduled process is run, the kernel does a quick check on the `pending_signals` 
-mailbox and switches execution based on the type of signal received. This is done via bitwise math and direct Instruction pointer manipulation so its very fast!
+mailbox (inside the PCB) and switches execution based on the type of signal received. This is done via bitwise math and direct Instruction pointer manipulation so its very fast
 
-This is the reason why you can Ctrl+C a hanged shell process and it 'responds'!
+This is the reason why you can Ctrl+C a hanged shell process and it 'responds'
 
 
 ### Process groups
@@ -223,7 +223,7 @@ If you Ctrl+C this shell, which process are you talking to? You should be target
 
 Or if your run a process, which itself creates other child process, the Ctrl+C signal should not just reach the shell's child but all its grandchildren as well (Or your would have orphans)! 
 
-Or what if your shell is in the foreground group, Ctrl+C kills the shell too!
+Or what if your shell is in the foreground group, Ctrl+C kills the shell too
 
 The fix is have separate process groups. I put each child process in its own group using `setpgid()`, and use `tcsetpgrp()` to make the child's group the foreground while it's running. When the child finishes, I give the foreground back to the shell.
 
@@ -243,7 +243,7 @@ I added a non-blocking `waitpid` check with `WNOHANG` before each prompt to clea
 
 ## Parsing: the part nobody talks about
 
-Finally while I implemented each individual mechanims, I also need to handle chained commands like this: 
+Finall, while I had already implemented each individual mechanism, I still need to handle chained commands like this: 
 
 ```
 cat input.txt | grep foo > out.txt &
@@ -254,7 +254,7 @@ Turning this into something executable need tokenizing and parsing, almost like 
 - The second command redirects stdout to `out.txt`
 - The whole thing runs in the background
 
-> Real shells have [shell language interpreters](https://en.wikipedia.org/wiki/Unix_shell#Scripting), implementing full ASTs! 
+> Real shells have [shell language interpreters](https://www.gnu.org/software/bash/manual/bash.html#Shell-Syntax), implementing full ASTs 
 
 I built a simple tokenizer that splits on spaces, then walks through looking for special characters (`|`, `<`, `>`, `&`). Each command becomes a struct with its argv, input source, output destination, and whether it's backgrounded.
 Although in theory shells should support a full shell language file, that would be too complex for now...
@@ -272,7 +272,7 @@ I wanted something that looked cooler
 
 ### Using Electron to simulate a PTY 
 
-Instead of properly wiring up a PTY, I piped the shell's stdout into an Electron application (sounds absurd but I just wanted something that looks *fancy*). That's what gave the shell that matrix-y look in the screenshot at the top of this blog!
+Instead of wiring up a real PTY, I piped the shell's stdout into an Electron application (sounds absurd but I just wanted something that looks *fancy*). That's what gave my terminal that matrix-y look in the screenshot at the top of this blog!
 
 Building a terminal wasn't really part of the project though, so I mostly vibe-coded the frontend portions and only did the wiring myself.  I wrote a bash script that launches the Electron app, the Electron app then forks my shell process and connects to it via fd sharing, spinning in a loop reading its output and rendering it into the custom UI.
 
