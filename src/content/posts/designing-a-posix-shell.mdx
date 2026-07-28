@@ -55,7 +55,7 @@ This is the foundation for everything else in the shell.
 
 ---
 
-## The first surprise: cd isn't a program
+## Builtins: cd isn't a program
 
 One thing that surprised me early on was that `cd` isn't actually an executable sitting somewhere in `/usr/bin`. 
 There are numer of such shell commands which are builtins - commands implemented directly within the shell.
@@ -129,7 +129,7 @@ $echo$PATH
 
 ```
 
-> For obvious purposes this is not the actual a snippet of my shell's `$PATH` here
+> For obvious purposes this is not the actual a snippet of my shell's `$PATH`
 
 Shell's also supporting caching paths for quick lookup, you can run `hash` on your shell and see the internal hash table
 
@@ -149,7 +149,7 @@ hits	command
 ```
 
 I also implemented a hash table that would cache commands to their paths when executed once before so that the shell doesnt have to search again.
-As a bonus I also configured it so that on launch, my shell inherits the parent's hash table and shell $PATH!
+As a bonus I also configured it so that on launch, my shell inherits the parent's hash table and `$PATH`!
 
 ---
 
