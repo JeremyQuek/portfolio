@@ -57,7 +57,7 @@ else condition:
 ```
 
 Modelling this as a graph we get:
-<img width="500" alt="Branch CFG" src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/If-then-else-control-flow-graph.svg/300px-If-then-else-control-flow-graph.svg.png" referrerpolicy="no-referrer" />
+<img width="700" alt="Branch CFG" src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/If-then-else-control-flow-graph.svg/300px-If-then-else-control-flow-graph.svg.png" referrerpolicy="no-referrer" />
 
 Before entering the `if` statement, the analysis knows that the environment contains `{x: int}`. Since execution may follow either branch, the environment is cloned and propagated down both outgoing edges.
 
@@ -78,7 +78,7 @@ else condition:
 
 ```
 
-<img width="500" alt="Loop CFG" src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/While-loop-control-flow-graph.svg/300px-While-loop-control-flow-graph.svg.png" referrerpolicy="no-referrer" />
+<img width="700" alt="Loop CFG" src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/While-loop-control-flow-graph.svg/300px-While-loop-control-flow-graph.svg.png" referrerpolicy="no-referrer" />
 
 What's important is that loops can be treated as a branching with a empty `else` path, and a backedge from the loop body to the loop condition.
 Introducing backedges also tunrs out DAG into a cyclical graph, which makes things a little complicated, but we can deal with that later. 
@@ -153,6 +153,8 @@ The function executes against that environment, producing a return type and upda
 In effect, the program is no longer represented by a single control flow graph.
 Instead, it becomes a graph of interconnected control flow graphs, where function calls act as edges between them.
 
+---
+
 ## Kahn's Algorithm and Topological Sorting
 
 This is where we actually perform the analysis.
@@ -173,21 +175,26 @@ Loops introduce backedges, creating cycles that make a topological ordering impo
 
 So how do we work around that?
 
+---
+
 ## Strongly Connected Components
 
-A strongly connected component (SCC) is a maximal set of vertices where every vertex is reachable from every other vertex.
+A strongly connected component (SCC) is a maximal set of vertices where every vertex is reachable from every other vertex. 
 Intuitively, once execution enters an SCC, there exists a path that allows it to revisit every node within that component.
 
 In a control flow graph, SCCs correspond almost perfectly to loops.
 
-The key observation is that while the graph itself may contain cycles, the SCCs do not.
-If we collapse every SCC into a single "super node", the resulting graph is guaranteed to be a DAG.
+The key observation is that while the graph itself may contain cycles, the SCCs do not. 
+We can collapse the SCC into a single "super node", and produce a DAG using [Tarjan's / Kosaraju's algorithm](https://cp-algorithms.com/graph/strongly-connected-components.html).
 
 <img width="600" alt="Strongly Connected Components" src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Scc.png/400px-Scc.png" referrerpolicy="no-referrer" />
 
 This is incredibly useful because it allows us to recover a topological ordering.
 Rather than sorting individual basic blocks, we first topologically sort the SCC graph.
 Each SCC can then be analysed independently, with the nodes inside it repeatedly evaluated until a fixed point is reached.
+
+
+---
 
 ## Reducibility
 
