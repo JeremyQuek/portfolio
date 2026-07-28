@@ -14,6 +14,7 @@ import shellImg from '../../assets/images/blogs/shell.png';
 import fdImg from '../../assets/images/blogs/file_descriptor.png';
 import shellArchImg from '../../assets/images/blogs/shell_architecture.png';
 import ttyImg from '../../assets/images/blogs/tty.png';
+import pipeImg from '../../assets/images/blogs/pipe.webp';
 
 ## Table of contents
 
@@ -101,8 +102,8 @@ if (pid == 0) {
 
 ```
 
-The interesting thing is that for the parent `fork()` returns the child pid, while the child pid returns 0. 
-You can imagine that `fork()` internally changes the return value of the child on the stack!
+Fo the parent `fork()` returns the child pid, while the child pid returns 0. 
+You can imagine that `fork()` internally changes the return value of the child on the stack before returning execution to it.
  
 From here, the child typically calls `execv()` to replace itself with whatever program you actually wanted to run, and the parent calls `wait()` to block until it's done.
 
@@ -112,13 +113,22 @@ This is the foundation of Unix process creation and there are other interesting 
 
 ## Path resolution
 
-So actually run child executables, the shell has to be able to find them.
-Most shell softwares like zsh come with preconfiguerd paths and good heuristic lookup hierachies to find something like `grep`/ `ls`
+So to actually run child executables like `grep`/ `ls`, the shell has to be able to find where the binary lives.
+Most shell softwares like zsh come with preconfiguerd paths and good heuristic lookup hierachies to find them.
 
-This is highly OS and fs dependent, so instead of creating my own path hierachy, I just borrowed the $PATH variable from the
+This is highly OS and fs dependent, so instead of creating my own path hierachy, I just borrowed the `$PATH` variable from the
 parent shell that runs my shell.
 
-You can run `echo $PATH` on your zsh/bash shell and it will show the paths that ure shell looks up when you type a commnad like `ls`!
+You can run `echo $PATH` on your zsh/bash shell and it will show something like this:
+
+```bash
+
+$echo$PATH
+/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+
+```
+
+> For obvious purposes this is not the actual a snippet of my shell's `$PATH` here
 
 Shell's also supporting caching paths for quick lookup, you can run `hash` on your shell and see the internal hash table
 
@@ -172,21 +182,9 @@ I expected redirection to require changing every program I executed. Turns out i
 
 ## Pipes: the part that broke me
 
-I always thought `|` was some magical shell syntax. It actually creates a pipe between two separate processes. A pipe is just a kernel buffer with two file descriptors attached to it.
+I always thought `|` was some magical shell syntax. It actually creates a [pipe](https://en.wikipedia.org/wiki/Pipeline_(Unix)) between two separate processes. A pipe is just a kernel buffer with two file descriptors attached to it.
 
-```
-grep foo
-    stdout
-      │
-      ▼
-┌─────────────┐
-│ kernel pipe │
-└─────────────┘
-      │
-      ▼
-  sort
-   stdin
-```
+<img src={pipeImg.src} alt="Pipe diagram" width="700" />
 
 The `pipe()` syscall gives two fds: a read end and a write end. I use `dup2()` to wire process A's stdout into the write end, and process B's stdin into the read end.
 
@@ -199,6 +197,8 @@ I had to support arbitrary chains (`A | B | C | D`), which means n-1 pipes for n
 ---
 
 ## Signals: don't kill the shell
+
+If you're a dev, you would definintely have hit Ctrl+C on your shell before. This is known as a [signal](https://en.wikipedia.org/wiki/Signal_(IPC)).
 
 When you press Ctrl+C, your terminal sends SIGINT to the foreground process group. Problem: if your shell is in the foreground group, Ctrl+C kills the shell too.
 
