@@ -12,4 +12,196 @@ tags:
 description: "How graph theory turns program execution and control flow into visual models"
 ---
 
-Coming soon.
+## Table of contents
+
+## What's this about
+
+I reason about using graphs as a formal way of representing programs. Many aspects of a program, such as 
+dependencies and control flow, can be modelled with graphs and in this blog I will discuss my experience in it! 
+
+<img width="700" alt="Project Dependency Graph" src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/Dependency_Graph.svg/600px-Dependency_Graph.svg.png" referrerpolicy="no-referrer" />
+<div align="center">Project Dependence graph</div>
+
+### Why do this?
+
+Ironically, not for fun (if you can believe it). I wanted to build a simple type checking system for Python by recursing on its AST, but quicky
+found that attempting to model Python's lexical environment and semantics that way was fundamentally the wrong abstraction. As a result I have to sit down
+and create my graph model of Python.
+
+
+## Control Flow 
+
+Control flow showcases the structure of the program as you enter loops, if-else blocks, throws and catch. 
+It is a directed graph of the basic blocks of the program (the vertices) and the control flow (edges) that move between them.
+
+Thinking about execution as a graph turns out to be surprisingly intuitive.
+
+<img width="700" alt="Control Flow Graph" src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Control-flow-graph-ex.svg/400px-Control-flow-graph-ex.svg.png" referrerpolicy="no-referrer" />
+<div align="center">Example of a CFG</div>
+
+Because each node is a separate instance in the program, it becomes a very natural way of modelling data flow. Symbol scopes move
+from the root entry vertice through the edges and become mutated and propagate downwards.
+
+### Branches
+
+The easiest example is to look at a branch. Lets say we have the following code:
+
+```
+x = 5
+
+if condition:
+  x=""
+else condition:
+  x=5.5
+
+```
+
+Modelling this as a graph we get:
+<img width="500" alt="Branch CFG" src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/If-then-else-control-flow-graph.svg/300px-If-then-else-control-flow-graph.svg.png" referrerpolicy="no-referrer" />
+
+Before entering the `if` statement, the analysis knows that the environment contains `{x: int}`. Since execution may follow either branch, the environment is cloned and propagated down both outgoing edges.
+
+The first branch updates `x` to `str`, while the second updates it to `float`. The analysis therefore tracks two independent program states simultaneously. When the branches eventually rejoin, those environments can be merged to produce a new environment representing every possible execution path.
+
+### Loops 
+
+Similar to branching, we might get loops which introduce a fair bit of complexity.
+
+```
+x = 5
+
+if condition:
+  while condition2:
+    x=""
+else condition:
+  x=5.5
+
+```
+
+<img width="500" alt="Loop CFG" src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/While-loop-control-flow-graph.svg/300px-While-loop-control-flow-graph.svg.png" referrerpolicy="no-referrer" />
+
+What's important is that loops can be treated as a branching with a empty `else` path, and a backedge from the loop body to the loop condition.
+Introducing backedges also tunrs out DAG into a cyclical graph, which makes things a little complicated, but we can deal with that later. 
+
+Fortunately, we don't need to reason about every individual iteration. For the purposes of static analysis, it is sufficient to model a loop as repeatedly joining the program state flowing around the backedge until no new information is discovered.
+
+Intuitively, the analysis considers two possibilities:
+
+1. The loop never executes.
+2. The loop executes one or more times.
+
+The loop header repeatedly merges information arriving from the loop body with the information arriving from the "loop skipped" path. Once that merged environment stops changing—a fixed point has been reached—the analysis can safely continue past the loop.
+
+
+### Functions
+
+This is where Python's first-class functions make things more interesting.
+
+Function definitions are unusual in a control flow graph because they behave as both executable statements and deferred execution.
+When the interpreter encounters a `def` statement, it does **not** execute the function body.
+Instead, it creates a function object and binds it to a name in the current environment.
+The body only becomes part of the execution once the function is called.
+
+So how should we model something like that?
+
+If we only cared about runtime execution, we could simply treat the `def` statement as a normal statement and ignore the body until a call occurs.
+For static type analysis, however, that isn't enough.
+Variables inside the function body often depend on the types of the arguments supplied by the caller, so until we know the call site, we can't know the precise types flowing through the function.
+
+Yet we'd still like to provide useful information.
+Ideally, if you hovered over `x` inside a function body, the type checker should display the best type information available, even if the function has never been called.
+
+There is also the issue of a closure environment, a returned inner function should a live snapshot of the environment it was defined in. 
+This is especially tricky as the lexical environment stack does not follow the call stack
+<img width="600" alt="Function subgraph" src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/Call_graph_for_a_simple_computer_program.svg/500px-Call_graph_for_a_simple_computer_program.svg.png" referrerpolicy="no-referrer" />
+
+
+### A reasonable Abstraction
+The solution is to model each function as its own subgraph.
+
+Rather than embedding the function body directly into the caller's graph, the `def` statement simply registers the existence of another graph.
+
+A `def` statement thus branches into two realities:
+1) The continuation of the main code body
+2) An orthongonal subgraph of the function body.
+
+Notice, that the function subgraph *does not join back into the main body?* 
+
+This is intentional because defintion code does not actually execute! The environments branch off, and end at their own separate realities.
+
+```
+x= 5
+def func():
+  global x
+  x="string"
+  return
+
+print(x) # <- At this point, x is still an int,
+         # even though we just saw x="string"!
+```
+
+The advantages of this subject model is even more ergonomic when you consider that it provides a clean portable graph component which can be *reattached* to the main
+graph at the call site! It also works for capturing the closure environment by shallowing copying the environment stack at the definition node and storing it.
+
+<img width="600" alt="Function call graph attachment" src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/21/Control_flow_graph_of_function_with_two_calls.svg/400px-Control_flow_graph_of_function_with_two_calls.svg.png" referrerpolicy="no-referrer" />
+
+Here, we simply need to attached a forward-edge from the tail node to the main graph because now the function body is live! 
+
+Thus, whenever a call is encountered, the analysis enters that graph with a fresh environment populated from the argument types.
+The function executes against that environment, producing a return type and updated type information, which are then propagated back to the caller.
+
+In effect, the program is no longer represented by a single control flow graph.
+Instead, it becomes a graph of interconnected control flow graphs, where function calls act as edges between them.
+
+## Kahn's Algorithm and Topological Sorting
+
+This is where we actually perform the analysis.
+
+To propagate type information through the graph, we need to process nodes in an order that respects their dependencies.
+Consider any basic block. The outgoing type information for `x` cannot be computed until every incoming edge has been analysed and their environments have been merged.
+
+That naturally suggests a topological ordering.
+
+If you've ever solved *Course Schedule* on LeetCode, this idea should feel familiar.
+A node can only be processed once all of its predecessors have already been processed.
+
+For a directed acyclic graph (DAG), Kahn's algorithm gives us exactly this ordering.
+By repeatedly processing nodes with zero incoming edges, we obtain an ordering in which every dependency is guaranteed to have been visited first.
+
+Unfortunately, a control flow graph is generally **not** a DAG.
+Loops introduce backedges, creating cycles that make a topological ordering impossible.
+
+So how do we work around that?
+
+## Strongly Connected Components
+
+A strongly connected component (SCC) is a maximal set of vertices where every vertex is reachable from every other vertex.
+Intuitively, once execution enters an SCC, there exists a path that allows it to revisit every node within that component.
+
+In a control flow graph, SCCs correspond almost perfectly to loops.
+
+The key observation is that while the graph itself may contain cycles, the SCCs do not.
+If we collapse every SCC into a single "super node", the resulting graph is guaranteed to be a DAG.
+
+<img width="600" alt="Strongly Connected Components" src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Scc.png/400px-Scc.png" referrerpolicy="no-referrer" />
+
+This is incredibly useful because it allows us to recover a topological ordering.
+Rather than sorting individual basic blocks, we first topologically sort the SCC graph.
+Each SCC can then be analysed independently, with the nodes inside it repeatedly evaluated until a fixed point is reached.
+
+## Reducibility
+
+Most control flow graphs produced by structured programming languages are **reducible**.
+
+Intuitively, this means every loop has a single entry point.
+Execution may leave the loop in multiple places, but it can only enter through one designated header.
+
+This seemingly simple property has enormous implications.
+
+Because every cycle has a unique entry point, the compiler can naturally identify loop headers and treat each loop as a single strongly connected component.
+Analyses such as dominance, data-flow analysis, SSA construction, and fixed-point iteration all become significantly simpler.
+
+Python, like most structured languages, produces reducible control flow graphs.
+Unless features such as arbitrary `goto` statements are introduced, loops always have a well-defined header.
+
+This means our analysis can rely on SCC decomposition and fixed-point iteration without having to deal with arbitrary irreducible control flow.
