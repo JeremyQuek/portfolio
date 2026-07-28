@@ -89,7 +89,7 @@ same line of code!
 
 ```c
 
-pid_t pid = fork();
+pid_t pid = fork(); // <- This is where the instruction pointer returns to in both child and parent!
 
 if (pid == 0) {
     // child process
@@ -107,6 +107,7 @@ You can imagine that `fork()` internally changes the return value of the child o
 From here, the child typically calls `execv()` to replace itself with whatever program you actually wanted to run, and the parent calls `wait()` to block until it's done.
 
 This is the foundation of Unix process creation and there are other interesting nuances like [Copy-on-write](https://en.wikipedia.org/wiki/Copy-on-write)!
+
 ---
 
 ## Path resolution
