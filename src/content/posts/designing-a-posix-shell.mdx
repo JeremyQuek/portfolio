@@ -103,8 +103,8 @@ if (pid == 0) {
 
 ```
 
-Fo the parent `fork()` returns the child pid, while the child pid returns 0. 
-You can imagine that `fork()` internally changes the return value of the child on the stack before returning execution to it.
+For the parent `fork()` returns the child pid, while the it returns 0 for the child. 
+You can imagine that the kernel internally restores the execution context for the child and parent with different values in the `EAX/RAX`!
  
 From here, the child typically calls `execv()` to replace itself with whatever program you actually wanted to run, and the parent calls `wait()` to block until it's done.
 
@@ -162,7 +162,7 @@ Most of shell's output and input manipulation is fd redirection. As mentioned fd
 
 ### Stdin and Stdout
 
-Stdin, stoud is what process typicall write/read to using `printf()/print()` and `input()/cin` (and other canonical language methods).
+Stdin, stout is what process typicall write/read to using `printf()/print()` and `input()/cin` (and other canonical language methods).
 When you run a python script, or executable or a git command, their outputs are written to stdout which is terminal you executed them from.
 
 > Did you know that in C, `printf()` is also an internally buffered user space library around the system call write() to stdout?
