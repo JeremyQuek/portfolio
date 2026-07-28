@@ -58,7 +58,7 @@ This is the foundation for everything else in the shell.
 ## Builtins: cd isn't a program
 
 One thing that surprised me early on was that `cd` isn't actually an executable sitting somewhere in `/usr/bin`. 
-There are numer of such shell commands which are builtins - commands implemented directly within the shell.
+There are number of such shell commands which are builtins - commands implemented directly within the shell.
 
 If you're on zsh/bash, you can run `which $cmd` to see the executable binding of that command in your shell!
 Doing it for pwd/cd will likely show:
@@ -117,7 +117,7 @@ This is the foundation of Unix process creation and there are other interesting 
 So to actually run child executables like `grep`/ `ls`, the shell has to be able to find where the binary lives.
 Most shell softwares like zsh come with preconfiguerd paths and good heuristic lookup hierachies to find them.
 
-This is highly OS and fs dependent, so instead of creating my own path hierachy, I just borrowed the `$PATH` variable from the
+This is highly OS dependent, so instead of creating my own path hierachy, I just borrowed the `$PATH` variable from the
 parent shell that runs my shell.
 
 You can run `echo $PATH` on your zsh/bash shell and it will show something like this:
@@ -213,6 +213,8 @@ This is the reason why you can Ctrl+C a hanged shell process and it 'responds'
 
 ### Process groups
 
+A process group is a logical construct that lives as an int inside the PCB.
+
 Say you spin up something like a pipe chain:
 
 ```
@@ -223,7 +225,7 @@ If you Ctrl+C this shell, which process are you talking to? You should be target
 
 Or if your run a process, which itself creates other child process, the Ctrl+C signal should not just reach the shell's child but all its grandchildren as well (Or your would have orphans)! 
 
-Or what if your shell is in the foreground group, Ctrl+C kills the shell too
+Or what if your shell is in the foreground group, Ctrl+C kills the shell too!
 
 The fix is have separate process groups. I put each child process in its own group using `setpgid()`, and use `tcsetpgrp()` to make the child's group the foreground while it's running. When the child finishes, I give the foreground back to the shell.
 
