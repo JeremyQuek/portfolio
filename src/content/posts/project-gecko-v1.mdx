@@ -23,14 +23,21 @@ could type check python and cover the gaps (mainly type provenance) of modern to
 
 Repo: [github.com/JeremyQuek/gecko](https://github.com/JeremyQuek/gecko)
 
+## Project Architecture
+
+Right! So a type analyzer roughly needs 3 layers of logic to execute properly:
+
+1) Core Engine: Delegates the task to the Project Manager and interfaces with the LSP
+2) Project Manager: Analyzes the entire project, virtual env, and creates a dependency graph of modules
+3) Module Analyzer: Called by Project Manager to extract types on a single file
+
+<img src={geckoModulesImg.src} alt="UML Module Diagram" width="700" />
+<div align="center">Layers of Proposed Type Analyzer Software</div>
+
+
 ## Single File Analysis
 
 <img src={geckoModulesImg.src} alt="UML Module Diagram" width="700" />
 <div align="center">Module Dependency and API Graph</div>
-
-## Project Architecture
-
-<img src={geckoModulesImg.src} alt="UML Module Diagram" width="700" />
-<div align="center">Layers of Proposed Type Analyzer Software</div>
 
 See also: [Modelling Program Execution with Graphs](/posts/modelling-program-execution-with-graphs)
