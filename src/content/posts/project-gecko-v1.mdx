@@ -13,6 +13,9 @@ description: "Probably going to be a personal endeavour for the foreseeable futu
 ---
 import geckoModulesImg from '../../assets/images/blogs/gecko_modules.png';
 import geckoArchImage from '../../assets/images/blogs/gecko_arch.png';
+import LEGBImg from '../../assets/images/blogs/LEGB.png';
+import environmentCloneImg from '../../assets/images/blogs/environment_clone.png';
+import closureEnvImg from '../../assets/images/blogs/closure_env.png';
 
 ## Table of contents
 
@@ -28,9 +31,9 @@ Repo: [github.com/JeremyQuek/gecko](https://github.com/JeremyQuek/gecko)
 
 Right! So a type analyzer roughly needs 3 layers of logic to execute properly:
 
-1) Core Engine: Delegates the task to the Project Manager and interfaces with the LSP
-2) Project Manager: Analyzes the entire project, virtual env, and creates a dependency graph of modules
-3) Module Analyzer: Called by Project Manager to extract types on a single file
+1) Module Analyzer: Called by Project Manager to extract types on a single file [Completed]
+2) Project Analyzer: Inspects the entire project, the interpreter env, and creates a dependency graph amongst files [In Progress]
+3) Core Engine: Delegates the task to the Project Analyzer and interfaces with the LSP
 
 <img src={geckoArchImage.src} alt="Gecko Arch" width="700" />
 <div align="center">Layers of Proposed Type Analyzer Software</div>
@@ -41,4 +44,59 @@ Right! So a type analyzer roughly needs 3 layers of logic to execute properly:
 <img src={geckoModulesImg.src} alt="UML Module Diagram" width="700" />
 <div align="center">Module Dependency and API Graph</div>
 
+The analysis of a program requires many steps. I used Python's in-built `ast` module to generate an AST.
+
+The main controller, `ModuleAnalyzer`, oversees the generation of the control flow graph using
+the `ASTWalker` class. 
+
+It owns the graph traversal logic using a topological sorting order. It calls `CodeBlockAnalyzer` on each graph node (a chunk
+of program text) to process and persist type information into a symbol table.
+
+### Store and LEGB
+
+A `LexicalEnvironment` object stores a stack of symbol tables.
+The stack naturally models Python's [LEGB semantics](https://realpython.com/python-scope-legb-rule/). 
+
+<img src={LEGBImg.src} alt="LEGB Diagram" width="700" />
+
+A stack naturally captures this lookup behaviour.
+Let's say we're trying to process `x : int = 5`, and want to know which `x` we're referring to, we would:
+
+1) Lookup the `local` scope, which is the topmost symbol table in the stack
+2) Lookup `enclosures`, which would be the middle symbol tables
+3) Refer to the `global` table, which is the lowest table on the stack
+
+And finally the built-in which is a standard for all Python programs.
+
+As we move into and out of procedure calls, the stack pops and pushes a frame and naturally models the environment.
+
+### Environment Capturing
+
+Storing a `LexicalEnvironment` as the symbol object store, and a 1:1 mapping to a graph node gives us nice properties like
+being able to model branching naturally as the environment is 'cloned' for the two child branches.
+
+<img src={environmentCloneImg.src} alt="Clone Diagram" width="700" />
+<div align="center">Environment Cloning on Branching </div>
+
+It allows us to easily capture a [closure environment](https://realpython.com/python-closure/) for a function,
+by noting the instance of `LexicalEnvironment` at the entrypoint of a function definition subgraph.
+
+<img src={closureEnvImg.src} alt="Closure Diagram" width="700" />
+<div align="center"> Capture a Closure Environment </div>
+
+### Writing to an Output
+
+The output is streamed to an output data structure. Ideally this is done asynchronously, so that the upstream engine and project level
+controllers can showcase the type information as soon as they're ready.
+
+*But what if a symbol's type information is not complete when first published?*
+
+Because the graph analysis is done topologically, this ensures that all sections of a program that have a bearing on the type of a
+variable `x` (the "flow" of the program into `x`) must be processed before `x` can be.
+
+This ensures that when we process a node, we always have all prerequisite knowledge required to analyze it. 
+
+
 See also: [Modelling Program Execution with Graphs](/posts/modelling-program-execution-with-graphs)
+
+More coming soon!
